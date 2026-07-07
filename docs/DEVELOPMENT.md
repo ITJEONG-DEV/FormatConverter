@@ -193,6 +193,19 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 
 ---
 
+## 6-2. 자동 테스트 / 브랜치 전략
+
+- 테스트는 **pytest** 3계층(① 단위 · ② GUI 스모크 · ③ 실제 ffmpeg 통합). 상세는 `docs/TEST.md`.
+- 기능 추가·수정·버그 수정 때마다 **`pytest` 전체 회귀**로 검증한다. (현재 37개, ~1초)
+- CI: `.github/workflows/test.yml` 이 dev/main push·PR 에서 전체 테스트 실행.
+  릴리스(`release.yml`)는 **테스트 통과 후에만**(`needs: test`) 빌드 → 깨진 채 배포 방지.
+
+### 브랜치 전략
+- 개발은 **`dev` 브랜치**에서 진행. push 시 `test.yml` 이 자동 검증.
+- 배포할 때만 **`main` 에 머지**하고, `main` 에서 `git tag -a vX.Y.Z` push → 릴리스.
+
+---
+
 ## 7. 진행 상황 / TODO
 
 ### 완료
@@ -206,9 +219,12 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] QML 로드 / 드래그앤드롭 필터링 / 옵션 변환 검증
 - [x] 배포 인프라: `build.py`(full/lite), `version.py`, GitHub Actions 릴리스 워크플로
 - [x] 배포 문서: `DEVELOPMENT.md`, `lite-ffmpeg-안내.md`, `release_body_template.md`
+- [x] **full/lite exe 실제 빌드·기동 검증** (offscreen 스모크 통과. full 824MB / lite 168MB)
+- [x] 자동 테스트 파이프라인: pytest 3계층 37개, `test.yml`(dev/main) + 릴리스 게이트(`needs: test`)
+- [x] 브랜치 전략 확정: dev 개발 / main 배포
 
 ### 다음 할 일 (우선순위 순)
-- [ ] **full/lite exe 실제 빌드·기동 검증** (PyInstaller + QML 번들 확인)
+- [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량
 - [ ] C1 영상→영상 변환 엔진 추가 (`media.py`에 VideoOptions/명령 생성, ROUTES 확장)
 - [ ] C3 음원→음원 UI 노출 정리(현재 엔진은 지원, 입력 필터만 확장)
 - [ ] C4 이미지→이미지 변환(`core/image.py` Pillow 엔진) + registry 라우팅

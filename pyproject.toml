@@ -1,0 +1,10 @@
+[tool.pytest.ini_options]
+minversion = "7.0"
+# 프로젝트 루트를 import 경로에 추가 (테스트에서 core/, gui/ 직접 import)
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-ra --durations=10"
+markers = [
+    "ffmpeg: ffmpeg/ffprobe 실행 파일이 필요한 통합 테스트 (없으면 자동 skip)",
+    "gui: PySide6 GUI(offscreen) 스모크 테스트 (PySide6 없으면 자동 skip)",
+]

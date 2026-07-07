@@ -15,7 +15,41 @@ env:
   PYTHONUTF8: "1"        # 러너 콘솔 인코딩과 무관하게 Python I/O를 UTF-8로
 
 jobs:
+  # 배포 게이트: 테스트가 통과해야만 빌드/릴리스가 진행된다.
+  test:
+    runs-on: windows-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Download ffmpeg (통합 테스트용)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force bin | Out-Null
+          Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile ffmpeg.zip
+          Expand-Archive ffmpeg.zip -DestinationPath ffmpeg_tmp -Force
+          $ff = Get-ChildItem -Recurse ffmpeg_tmp -Filter ffmpeg.exe  | Select-Object -First 1
+          $fp = Get-ChildItem -Recurse ffmpeg_tmp -Filter ffprobe.exe | Select-Object -First 1
+          Copy-Item $ff.FullName bin/ffmpeg.exe  -Force
+          Copy-Item $fp.FullName bin/ffprobe.exe -Force
+
+      - name: Run tests
+        run: python -m pytest
+
   build-and-release:
+    needs: test        # 테스트 통과 후에만 실행 → 깨진 채 배포되는 것을 막음
     runs-on: windows-latest
     steps:
       - name: Checkout
