@@ -1,0 +1,65 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+*.egg
+
+# ---- 가상환경 ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- PyInstaller ----
+*.spec
+*.manifest
+
+# ---- 테스트/커버리지 ----
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ---- IDE / 에디터 ----
+.vscode/
+.idea/
+*.swp
+*~
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- 번들 바이너리 (직접 배치, 저장소에 커밋하지 않음) ----
+bin/ffmpeg*
+bin/ffprobe*
+*.exe
+*.dll
+
+# ---- 변환 입출력/샘플 (테스트용 미디어는 커밋 제외) ----
+/samples/
+/output/
+*.mp4
+*.mp3
+*.mkv
+*.avi
+*.mov
+*.wav
+*.flac
+*.m4a
+*.webm
+
+# ---- 로그/임시 ----
+*.log
+tmp/
+temp/
