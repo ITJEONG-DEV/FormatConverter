@@ -10,9 +10,6 @@ from pathlib import Path
 # Windows에서 콘솔 창이 깜빡이지 않도록
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
-# 프로젝트 루트/bin 우선 탐색
-_BIN_DIR = Path(__file__).resolve().parent.parent / "bin"
-
 
 @dataclass(frozen=True)
 class Tools:
@@ -24,13 +21,34 @@ class FFmpegNotFound(Exception):
     pass
 
 
+def _candidate_dirs() -> list[Path]:
+    """ffmpeg/ffprobe를 찾을 후보 폴더 (우선순위 순).
+
+    개발 환경 · 번들(full) · 단일exe(lite) · 시스템 PATH 모두 대응.
+    """
+    dirs: list[Path] = []
+    if getattr(sys, "frozen", False):
+        # 번들(full): _MEIPASS/ffmpeg/  (build.py가 ffmpeg/ 하위로 번들)
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            dirs.append(Path(meipass) / "ffmpeg")
+        # 단일exe(lite): exe 옆 / ffmpeg / bin
+        exe_dir = Path(sys.executable).parent
+        dirs += [exe_dir, exe_dir / "ffmpeg", exe_dir / "bin"]
+    else:
+        # 개발 환경: 프로젝트 bin/
+        dirs.append(Path(__file__).resolve().parent.parent / "bin")
+    return dirs
+
+
 def _locate(name: str) -> str | None:
     exe = name + (".exe" if sys.platform == "win32" else "")
-    local = _BIN_DIR / exe
-    if local.exists():
-        return str(local)
-    found = shutil.which(name)
-    return found
+    for d in _candidate_dirs():
+        candidate = d / exe
+        if candidate.exists():
+            return str(candidate)
+    # 마지막으로 시스템 PATH
+    return shutil.which(name)
 
 
 def find_tools() -> Tools:

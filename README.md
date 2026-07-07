@@ -34,18 +34,36 @@
 - [FFmpeg](https://ffmpeg.org/) (실행 파일을 `bin/`에 두거나 시스템 PATH에 등록)
 
 ## 설치 및 실행
-```bash
-# 가상환경 생성
+```powershell
+# 가상환경 생성 (PySide6 휠 문제 시 Python 3.12/3.13 권장)
 python -m venv .venv
-.venv\Scripts\activate      # Windows
-# source .venv/bin/activate # macOS/Linux
+.\.venv\Scripts\Activate.ps1
 
 # 의존성 설치
 pip install -r requirements.txt
+# ffmpeg 필요: winget install Gyan.FFmpeg  (또는 bin/ 폴더에 ffmpeg.exe·ffprobe.exe 배치)
 
 # 실행
 python main.py
 ```
+
+## 배포용 exe 빌드
+```powershell
+pip install pyinstaller
+python build.py          # full(폴더형+ffmpeg) + lite(단일파일) 모두 빌드
+```
+- **full**: `dist/FormatConverter/` — ffmpeg 포함, 폴더째 zip으로 배포
+- **lite**: `dist/FormatConverter-lite.exe` — 단일 파일, ffmpeg 미포함
+  ([`docs/lite-ffmpeg-안내.md`](docs/lite-ffmpeg-안내.md) 동봉)
+
+### 릴리스 (자동 배포)
+버전 태그를 push하면 GitHub Actions가 exe를 빌드해 Release로 배포합니다.
+```powershell
+git tag -a v1.0.0 -m "변경 내용 요약"
+git push origin v1.0.0
+```
+
+자세한 개발 정보와 진행 상황은 [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) 참고.
 
 ## 프로젝트 구조
 ```

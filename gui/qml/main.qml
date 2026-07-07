@@ -7,7 +7,7 @@ ApplicationWindow {
     width: 640
     height: 720
     visible: true
-    title: "FormatConverter"
+    title: "FormatConverter" + (typeof appVersion !== "undefined" && appVersion ? " v" + appVersion : "")
 
     property bool advancedOpen: false
 
