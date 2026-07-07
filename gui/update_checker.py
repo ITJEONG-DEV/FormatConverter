@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import os
+import sys
 
 from PySide6.QtCore import (
     Property, QCoreApplication, QObject, QThread, QTimer, Signal, Slot,
@@ -116,6 +117,9 @@ class UpdateChecker(QObject):
     def start(self, delay_ms: int = 1500):
         """앱 기동 후 자동 확인 예약. dev 빌드는 기본 skip(환경변수로 강제 가능)."""
         force = os.environ.get("FORMATCONVERTER_FORCE_UPDATE") == "1"
+        # 자동 적용(도우미 스크립트)이 현재 Windows 전용이므로 다른 OS에서는 확인도 skip.
+        if sys.platform != "win32" and not force:
+            return
         if up.build_kind() == "dev" and not force:
             return
         QTimer.singleShot(delay_ms, self.check)

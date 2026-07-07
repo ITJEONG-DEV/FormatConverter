@@ -1,19 +1,24 @@
 """
 build.py
 --------
-PyInstaller 배포 빌드 스크립트. 두 가지 산출물을 만든다.
+PyInstaller 배포 빌드 스크립트 (플랫폼 자동 분기).
 
+[Windows]
   full  : 폴더형(onedir) + ffmpeg 번들 포함  -> dist/FormatConverter/
   lite  : 단일파일(onefile), ffmpeg 미포함    -> dist/FormatConverter-lite.exe
 
+[macOS]
+  app   : 앱 번들(.app) -> dist/FormatConverter.app
+          ffmpeg 는 기본 미포함(brew install ffmpeg 로 연동). bin/ffmpeg 가 있으면 번들.
+
 사용법:
-  python build.py            # full + lite 모두 빌드
-  python build.py full       # 폴더형만
-  python build.py lite       # 라이트(단일파일)만
+  python build.py            # (Win) full + lite 모두 / (mac) .app
+  python build.py full       # (Win) 폴더형만
+  python build.py lite       # (Win) 라이트(단일파일)만
 
 사전 준비:
   pip install pyinstaller
-  full 빌드는 bin/ffmpeg.exe, bin/ffprobe.exe 가 있어야 한다.
+  (Win) full 빌드는 bin/ffmpeg.exe, bin/ffprobe.exe 가 있어야 한다.
 """
 
 import os
@@ -31,9 +36,11 @@ for _stream in (sys.stdout, sys.stderr):
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(ROOT, "main.py")
-ICON = os.path.join(ROOT, "assets", "app.ico")  # 있으면 자동 사용
+ICON_ICO = os.path.join(ROOT, "assets", "app.ico")    # Windows 아이콘(있으면 사용)
+ICON_ICNS = os.path.join(ROOT, "assets", "app.icns")  # macOS 아이콘(있으면 사용)
 QML_DIR = os.path.join(ROOT, "gui", "qml")
-SEP = os.pathsep  # Windows ';'
+SEP = os.pathsep  # Windows ';' / macOS ':'
+BUNDLE_ID = "com.itjeong.formatconverter"
 
 # 버전은 version.py 단일 소스에서 가져온다.
 sys.path.insert(0, ROOT)
@@ -99,7 +106,6 @@ def _common_args() -> list[str]:
         "--clean",
         "--name", APP_NAME,
         "--paths", ROOT,
-        "--version-file", _write_version_file(),
         # QML 리소스 번들 (런타임에 _MEIPASS/gui/qml 로 로드)
         "--add-data", f"{QML_DIR}{SEP}gui/qml",
         # QML 앱은 Python에서 QtQuick를 직접 import 하지 않으므로 명시적으로 포함해
@@ -112,11 +118,18 @@ def _common_args() -> list[str]:
         "--workpath", os.path.join(ROOT, "build"),
         "--specpath", os.path.join(ROOT, "build"),
     ]
-    if os.path.exists(ICON):
-        args += ["--icon", ICON]
+    if sys.platform == "win32":
+        args += ["--version-file", _write_version_file()]
+        if os.path.exists(ICON_ICO):
+            args += ["--icon", ICON_ICO]
+    elif sys.platform == "darwin":
+        args += ["--osx-bundle-identifier", BUNDLE_ID]
+        if os.path.exists(ICON_ICNS):
+            args += ["--icon", ICON_ICNS]
     return args
 
 
+# ------------------------- Windows -------------------------
 def build_full() -> None:
     ffmpeg = os.path.join(ROOT, "bin", "ffmpeg.exe")
     ffprobe = os.path.join(ROOT, "bin", "ffprobe.exe")
@@ -144,7 +157,31 @@ def build_lite() -> None:
     print(">>> [lite] 완료 -> dist/%s.exe" % LITE_NAME)
 
 
+# ------------------------- macOS -------------------------
+def build_macos() -> None:
+    args = _common_args() + ["--onedir"]
+    # bin/ffmpeg(ffprobe) 가 있으면 번들, 없으면 brew/PATH 로 연동(권장 기본)
+    ffmpeg = os.path.join(ROOT, "bin", "ffmpeg")
+    ffprobe = os.path.join(ROOT, "bin", "ffprobe")
+    bundled = False
+    if os.path.exists(ffmpeg):
+        args += ["--add-binary", f"{ffmpeg}{SEP}ffmpeg"]
+        bundled = True
+    if os.path.exists(ffprobe):
+        args += ["--add-binary", f"{ffprobe}{SEP}ffmpeg"]
+    note = "ffmpeg 번들 포함" if bundled else "ffmpeg 미포함(brew 연동)"
+    print(f">>> [macOS] .app 빌드 시작 ({note})")
+    PyInstaller.__main__.run(args)
+    print(">>> [macOS] 완료 -> dist/%s.app" % APP_NAME)
+
+
 def main() -> None:
+    if sys.platform == "darwin":
+        build_macos()
+        return
+    if sys.platform != "win32":
+        raise SystemExit(f"지원하지 않는 플랫폼: {sys.platform} (Windows/macOS만 지원)")
+
     target = sys.argv[1] if len(sys.argv) > 1 else "all"
     if target in ("full", "all"):
         build_full()

@@ -38,6 +38,11 @@ def _candidate_dirs() -> list[Path]:
     else:
         # 개발 환경: 프로젝트 bin/
         dirs.append(Path(__file__).resolve().parent.parent / "bin")
+
+    # macOS: Finder에서 실행한 .app 은 셸 PATH(/opt/homebrew/bin 등)를 물려받지 않으므로
+    # Homebrew 기본 위치를 직접 후보에 추가한다. (brew install ffmpeg 대응)
+    if sys.platform == "darwin":
+        dirs += [Path("/opt/homebrew/bin"), Path("/usr/local/bin")]
     return dirs
 
 

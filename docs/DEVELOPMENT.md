@@ -225,6 +225,46 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 
 ---
 
+## 6-4. macOS 배포
+
+`build.py`는 `sys.platform`으로 자동 분기한다. macOS에서는 `python build.py`가
+`dist/FormatConverter.app`(onedir 번들)를 만든다.
+
+- **ffmpeg**: 앱에 번들하지 않는다(아키텍처·dylib 문제). 사용자는 `brew install ffmpeg`로 설치하고,
+  `core/ffmpeg_tools._candidate_dirs`가 `/opt/homebrew/bin`·`/usr/local/bin`을 직접 탐색한다
+  (Finder 실행 시 셸 PATH를 못 물려받는 문제 대응). `bin/ffmpeg`가 있으면 번들도 가능.
+- **아이콘**: `assets/app.icns`가 있으면 자동 사용.
+- **자동 업데이트**: 현재 Windows 전용(도우미 PowerShell) → mac에서는 `UpdateChecker.start()`가 skip.
+- **아키텍처**: CI `macos-latest`는 Apple Silicon(arm64) → 산출물도 **arm64 전용**. Intel 지원은 별도 빌드 필요.
+- **CI**: `release.yml`의 `build-macos` 잡이 `build-and-release`(Windows) 이후 실행되어,
+  `.app` + `docs/macos-안내.md`를 `ditto`로 zip 패키징해 **같은 릴리스에 자산 추가**.
+- 사용자 안내: `docs/macos-안내.md`(brew 설치 + Gatekeeper 우회).
+
+### 서명 & 공증 (선택 — 기본은 서명 없음)
+서명·공증이 없으면 사용자는 최초 1회 *우클릭→열기* 또는 `xattr -dr com.apple.quarantine`가 필요하다.
+매끄러운 배포를 원하면 **Apple Developer Program($99/년)** 가입 후 아래를 구성한다.
+
+1. **인증서 발급**: Apple Developer에서 *Developer ID Application* 인증서를 만들어 macOS 키체인에 설치.
+2. **코드 서명**(빌드 후):
+   ```bash
+   codesign --deep --force --options runtime \
+     --sign "Developer ID Application: 이름 (TEAMID)" dist/FormatConverter.app
+   ```
+   (PySide6는 하위 프레임워크가 많아 `--deep` 또는 내부부터 개별 서명이 필요할 수 있음. hardened runtime 필수.)
+3. **공증**(notarytool):
+   ```bash
+   ditto -c -k --keepParent dist/FormatConverter.app FormatConverter.zip
+   xcrun notarytool submit FormatConverter.zip \
+     --apple-id "you@example.com" --team-id TEAMID --password "앱암호" --wait
+   xcrun stapler staple dist/FormatConverter.app   # 티켓 스테이플
+   ```
+4. **CI 연동**: 인증서(.p12)·앱 암호를 GitHub Secrets에 넣고 `build-macos` 잡에 서명·공증 스텝 추가.
+   (`APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`, `MAC_CERT_P12`, `MAC_CERT_PASSWORD` 등)
+
+> 공증까지 마치면 `.dmg`로 배포해도 Gatekeeper 경고 없이 바로 실행된다.
+
+---
+
 ## 7. 진행 상황 / TODO
 
 ### 완료
@@ -245,8 +285,13 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] 자동 업데이트(`core/updater.py` + `gui/update_checker.py` + QML 다이얼로그): 실행 시
   최신 릴리스 확인 → 변경요약 모달 → full/lite 자동 교체·재시작. 순수 로직 단위 테스트 포함
 
+- [x] macOS 배포: `build.py` OS 분기(.app), brew ffmpeg 연동(Homebrew 경로 탐색),
+  `release.yml` build-macos 잡(arm64 zip), `docs/macos-안내.md`, 서명·공증 가이드 문서화
+
 ### 다음 할 일 (우선순위 순)
 - [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량
+- [ ] macOS Intel(x86_64) 빌드 또는 universal2 지원 검토
+- [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포
 - [ ] C1 영상→영상 변환 엔진 추가 (`media.py`에 VideoOptions/명령 생성, ROUTES 확장)
 - [ ] C3 음원→음원 UI 노출 정리(현재 엔진은 지원, 입력 필터만 확장)
 - [ ] C4 이미지→이미지 변환(`core/image.py` Pillow 엔진) + registry 라우팅

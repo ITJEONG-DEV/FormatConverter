@@ -24,3 +24,6 @@
 | 추천 대상 | 대부분의 사용자 | ffmpeg가 이미 있거나 용량을 아끼려는 사용자 |
 
 > ffmpeg는 **영상·음원 변환**에 필요합니다. lite 사용 시 동봉된 `lite-ffmpeg-안내.md`를 참고하세요.
+
+> 🍎 **macOS 사용자**: `FormatConverter-macos-arm64-{{VERSION}}.zip` (Apple Silicon 전용).
+> ffmpeg는 `brew install ffmpeg`로 설치하고, 최초 실행 시 우클릭→열기 하세요(동봉된 `macos-안내.md` 참고).

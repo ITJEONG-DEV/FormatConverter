@@ -130,3 +130,52 @@ jobs:
           files: release/*.zip
           generate_release_notes: true   # body 뒤에 커밋 기반 변경내역 자동 추가
           body_path: release_body.md
+
+  # macOS 앱(.app) 빌드 → 같은 릴리스에 자산 추가.
+  # Windows 릴리스가 먼저 생성된 뒤(needs) zip 만 덧붙인다.
+  # 참고: macos-latest 는 Apple Silicon(arm64) 러너 → 산출물도 arm64 전용.
+  #       ffmpeg 는 번들하지 않으며, 사용자는 brew install ffmpeg 로 연동한다(docs/macos-안내.md).
+  build-macos:
+    needs: build-and-release
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Stamp version from tag
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          echo "__version__ = \"$VER\"" > version.py
+          echo "VERSION=$VER" >> "$GITHUB_ENV"
+          echo "Building macOS version $VER"
+
+      - name: Build (.app)
+        run: python build.py
+
+      - name: Package .app (ditto)
+        run: |
+          mkdir -p release
+          STAGE="FormatConverter-macos-$VERSION"
+          mkdir -p "$STAGE"
+          cp -R "dist/FormatConverter.app" "$STAGE/"
+          cp "docs/macos-안내.md" "$STAGE/"
+          # ditto 는 .app 의 심볼릭링크·권한·리소스포크를 보존한다(zip 보다 안전).
+          ditto -c -k --keepParent "$STAGE" "release/FormatConverter-macos-arm64-$VERSION.zip"
+          ls -la release
+
+      - name: Upload macOS asset to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: release/*.zip
