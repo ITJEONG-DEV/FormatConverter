@@ -15,13 +15,50 @@ def test_qml_loads(qapp):
     from PySide6.QtQml import QQmlApplicationEngine
 
     from gui.backend import Backend
+    from gui.update_checker import UpdateChecker
 
     engine = QQmlApplicationEngine()
     backend = Backend()
+    updater = UpdateChecker("0.0.1")
     engine.rootContext().setContextProperty("backend", backend)
+    engine.rootContext().setContextProperty("updater", updater)
     engine.rootContext().setContextProperty("appVersion", "test")
     engine.load(QUrl.fromLocalFile(str(QML)))
     assert engine.rootObjects(), "QML 로드 실패"
+
+
+@pytest.mark.gui
+def test_update_checker_available(qapp):
+    from gui.update_checker import UpdateChecker
+
+    checker = UpdateChecker("0.0.1")
+    # 스레드/네트워크 없이 결과 핸들러를 직접 호출해 상태 전이만 검증
+    checker._on_check_done({
+        "tag": "v0.0.2",
+        "body": "<!--CHANGES-->\n- 새 기능\n<!--/CHANGES-->",
+    })
+    assert checker.available is True
+    assert checker.latestVersion == "v0.0.2"
+    assert "새 기능" in checker.changes
+
+
+@pytest.mark.gui
+def test_update_checker_none_keeps_hidden(qapp):
+    from gui.update_checker import UpdateChecker
+
+    checker = UpdateChecker("0.0.1")
+    checker._on_check_done(None)          # 최신이 아님
+    assert checker.available is False
+
+
+@pytest.mark.gui
+def test_update_checker_dismiss(qapp):
+    from gui.update_checker import UpdateChecker
+
+    checker = UpdateChecker("0.0.1")
+    checker._on_check_done({"tag": "v0.0.2", "body": ""})
+    checker.dismiss()
+    assert checker.available is False
 
 
 @pytest.mark.gui

@@ -231,4 +231,75 @@ ApplicationWindow {
             }
         }
     }
+
+    // ---- 자동 업데이트 다이얼로그 ----
+    Popup {
+        id: updateDialog
+        modal: true
+        focus: true
+        closePolicy: Popup.NoAutoClose
+        visible: updater.available
+        anchors.centerIn: Overlay.overlay
+        width: 440
+        padding: 20
+
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 12
+
+            Label {
+                text: "새 버전 " + updater.latestVersion + " 이(가) 있습니다"
+                font.pixelSize: 18
+                font.bold: true
+            }
+            Label {
+                text: "현재 버전: v" + appVersion
+                color: "#666"
+            }
+
+            Frame {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 160
+                ScrollView {
+                    anchors.fill: parent
+                    clip: true
+                    TextArea {
+                        readOnly: true
+                        wrapMode: TextArea.Wrap
+                        text: updater.changes
+                    }
+                }
+            }
+
+            ProgressBar {
+                Layout.fillWidth: true
+                visible: updater.busy
+                from: 0; to: 100
+                value: updater.progress
+            }
+            Label {
+                Layout.fillWidth: true
+                text: updater.message
+                visible: updater.message !== ""
+                color: "#444"
+                wrapMode: Label.Wrap
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Button {
+                    text: "나중에"
+                    enabled: !updater.busy
+                    onClicked: updater.dismiss()
+                }
+                Item { Layout.fillWidth: true }
+                Button {
+                    text: updater.busy ? "설치 중…" : "지금 업데이트"
+                    highlighted: true
+                    enabled: !updater.busy
+                    onClicked: updater.apply()
+                }
+            }
+        }
+    }
 }

@@ -206,6 +206,25 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 
 ---
 
+## 6-3. 자동 업데이트 (`core/updater.py` + `gui/update_checker.py`)
+
+- 실행 1.5초 후 백그라운드 스레드로 GitHub `releases/latest` 조회(**패키지 빌드만**, dev는 skip.
+  `FORMATCONVERTER_FORCE_UPDATE=1` 로 dev에서도 강제 확인 가능).
+- 최신 태그가 현재 `__version__` 보다 높으면 QML 다이얼로그 표시:
+  새 버전 · 현재 버전 · 변경요약 · [나중에]/[지금 업데이트].
+- **[지금 업데이트]**: 빌드 종류(full/lite)에 맞는 zip을 받아 도우미 PowerShell 스크립트를
+  숨김 실행하고 앱 종료. 스크립트가 프로세스 종료를 기다렸다가 파일 교체 후 재시작.
+  - `lite`: 실행 중 exe는 못 덮어쓰므로 **rename 후 새 파일 복사**(부트로더 잠금 회피).
+  - `full`: 프로세스 종료 후 폴더 덮어쓰기(`Copy-Item -Recurse -Force`).
+  - 진단 로그: `%TEMP%/FormatConverter_update.log`. 비ASCII 경로 대응 위해 UTF-8 BOM + `-LiteralPath`.
+- 변경요약: 릴리스 본문 `<!--CHANGES-->…<!--/CHANGES-->`(= 태그 메시지)에서 추출.
+- 빌드 종류 판별: frozen + `_internal` 폴더 → full, frozen → lite, 비프리즈 → dev.
+
+> 주의: 자동 업데이트는 **이 기능이 포함된 버전부터** 동작(예: v0.0.2에 처음 탑재 시,
+> v0.0.2 사용자가 v0.0.3부터 알림을 받음).
+
+---
+
 ## 7. 진행 상황 / TODO
 
 ### 완료
@@ -220,8 +239,11 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] 배포 인프라: `build.py`(full/lite), `version.py`, GitHub Actions 릴리스 워크플로
 - [x] 배포 문서: `DEVELOPMENT.md`, `lite-ffmpeg-안내.md`, `release_body_template.md`
 - [x] **full/lite exe 실제 빌드·기동 검증** (offscreen 스모크 통과. full 824MB / lite 168MB)
-- [x] 자동 테스트 파이프라인: pytest 3계층 37개, `test.yml`(dev/main) + 릴리스 게이트(`needs: test`)
+- [x] 자동 테스트 파이프라인: pytest 3계층, `test.yml`(dev/main) + 릴리스 게이트(`needs: test`)
 - [x] 브랜치 전략 확정: dev 개발 / main 배포
+- [x] 첫 릴리스 `v0.0.1` 배포(full/lite zip 자산 발행 확인)
+- [x] 자동 업데이트(`core/updater.py` + `gui/update_checker.py` + QML 다이얼로그): 실행 시
+  최신 릴리스 확인 → 변경요약 모달 → full/lite 자동 교체·재시작. 순수 로직 단위 테스트 포함
 
 ### 다음 할 일 (우선순위 순)
 - [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량

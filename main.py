@@ -7,6 +7,7 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 from gui.backend import Backend
+from gui.update_checker import UpdateChecker
 
 try:
     from version import __version__
@@ -29,7 +30,9 @@ def main() -> int:
 
     engine = QQmlApplicationEngine()
     backend = Backend()
+    updater = UpdateChecker(__version__)
     engine.rootContext().setContextProperty("backend", backend)
+    engine.rootContext().setContextProperty("updater", updater)
     engine.rootContext().setContextProperty("appVersion", __version__)
 
     qml_path = _base_dir() / "gui" / "qml" / "main.qml"
@@ -37,6 +40,8 @@ def main() -> int:
 
     if not engine.rootObjects():
         return -1
+
+    updater.start()  # 기동 후 백그라운드로 최신 버전 확인(dev는 skip)
     return app.exec()
 
 
