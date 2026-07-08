@@ -12,8 +12,15 @@ def test_kind_of():
 def test_is_supported_input():
     assert is_supported_input("mp4")              # 영상 → 영상/음원 (구현됨)
     assert is_supported_input("wav")              # 음원 → 음원 (구현됨)
-    assert not is_supported_input("png")          # 이미지 출력 미구현
+    assert is_supported_input("png")              # 이미지 → 이미지 (C4 구현됨)
     assert not is_supported_input("txt")          # 미지원 확장자
+
+
+def test_output_formats_for_image():
+    outs = output_formats_for("png")
+    assert "jpg" in outs and "webp" in outs and "bmp" in outs
+    assert outs[0] == "jpg"                       # 흔한 포맷 우선, 동일 확장자(png)는 뒤로
+    assert "mp3" not in outs and "mp4" not in outs  # 이미지 → 미디어 없음
 
 
 def test_output_formats_for_video():
@@ -34,5 +41,5 @@ def test_output_formats_for_audio():
 
 
 def test_output_formats_for_unsupported():
-    assert output_formats_for("png") == []
+    assert output_formats_for("txt") == []
     assert output_formats_for("xyz") == []

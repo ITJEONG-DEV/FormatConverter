@@ -111,6 +111,24 @@ def test_backend_build_video_options(qapp):
 
 
 @pytest.mark.gui
+def test_backend_image_kind_and_options(qapp):
+    from core.registry import MediaKind
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/a/pic.png"])
+    assert b.outputKind == "image"          # 이미지 입력 → 이미지 출력
+    assert "jpg" in b.outputFormats
+    assert "mp3" not in b.outputFormats
+
+    opt = Backend._build_options(
+        {"imageResolution": "720", "imageQuality": 85}, MediaKind.IMAGE,
+    )
+    assert opt.resolution == "720"
+    assert opt.quality == 85
+
+
+@pytest.mark.gui
 def test_backend_clear(qapp):
     from gui.backend import Backend
 

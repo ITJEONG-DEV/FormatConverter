@@ -22,7 +22,9 @@ ApplicationWindow {
             "trimEnd": trimEndField.text,
             "videoResolution": resolutionBox.currentValue,
             "videoFps": fpsBox.currentValue,
-            "videoQuality": qualityBox.currentValue
+            "videoQuality": qualityBox.currentValue,
+            "imageResolution": imgResolutionBox.currentValue,
+            "imageQuality": imgQualityBox.currentValue
         }
     }
 
@@ -66,7 +68,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "영상 → 영상/음원, 음원 → 음원 변환"
+                    text: "영상 → 영상/음원 · 음원 → 음원 · 이미지 → 이미지"
                     font.pixelSize: 12
                     color: "#999"
                 }
@@ -121,10 +123,14 @@ ApplicationWindow {
                 columnSpacing: 16
                 rowSpacing: 8
 
-                Label { text: "비트레이트" }
+                Label {
+                    text: "비트레이트"
+                    visible: backend.outputKind !== "image"
+                }
                 ComboBox {
                     id: bitrateBox
                     Layout.fillWidth: true
+                    visible: backend.outputKind !== "image"
                     textRole: "text"
                     valueRole: "value"
                     currentIndex: 1
@@ -248,9 +254,51 @@ ApplicationWindow {
                     ]
                 }
 
-                Label { text: "구간 자르기 (초)" }
+                // ----- 이미지 전용 (이미지 출력일 때) -----
+                Label {
+                    text: "해상도"
+                    visible: backend.outputKind === "image"
+                }
+                ComboBox {
+                    id: imgResolutionBox
+                    Layout.fillWidth: true
+                    visible: backend.outputKind === "image"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "원본 유지", value: "" },
+                        { text: "높이 1080px", value: "1080" },
+                        { text: "높이 720px", value: "720" },
+                        { text: "높이 480px", value: "480" }
+                    ]
+                }
+
+                Label {
+                    text: "품질 (jpg/webp)"
+                    visible: backend.outputKind === "image"
+                }
+                ComboBox {
+                    id: imgQualityBox
+                    Layout.fillWidth: true
+                    visible: backend.outputKind === "image"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "기본", value: 0 },
+                        { text: "최고 (95)", value: 95 },
+                        { text: "높음 (85)", value: 85 },
+                        { text: "보통 (75)", value: 75 }
+                    ]
+                }
+
+                // ----- 구간 자르기 (영상·음원만) -----
+                Label {
+                    text: "구간 자르기 (초)"
+                    visible: backend.outputKind !== "image"
+                }
                 RowLayout {
                     Layout.fillWidth: true
+                    visible: backend.outputKind !== "image"
                     TextField {
                         id: trimStartField
                         Layout.fillWidth: true

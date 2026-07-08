@@ -8,6 +8,7 @@ from PySide6.QtCore import (
 )
 
 from core.ffmpeg_tools import FFmpegNotFound, find_tools
+from core.image import ImageOptions
 from core.media import AudioOptions, VideoOptions
 from core.registry import MediaKind, is_supported_input, kind_of, output_formats_for
 from gui.worker import ConversionWorker
@@ -130,16 +131,22 @@ class Backend(QObject):
         if not self._files:
             self._set_status("변환할 파일이 없습니다.")
             return
-        try:
-            tools = find_tools()
-        except FFmpegNotFound as exc:
-            self._set_status(str(exc))
-            return
 
         out_ext = self._output_format or (
             self._output_formats[0] if self._output_formats else "mp3"
         )
-        opt = self._build_options(options, kind_of(out_ext))
+        out_kind = kind_of(out_ext)
+
+        # 이미지 변환은 Pillow(인프로세스)라 ffmpeg가 필요 없다.
+        tools = None
+        if out_kind in (MediaKind.VIDEO, MediaKind.AUDIO):
+            try:
+                tools = find_tools()
+            except FFmpegNotFound as exc:
+                self._set_status(str(exc))
+                return
+
+        opt = self._build_options(options, out_kind)
 
         jobs = []
         for f in self._files:
@@ -186,6 +193,12 @@ class Backend(QObject):
                 return cast(v)
             except (ValueError, TypeError):
                 return default
+
+        if kind == MediaKind.IMAGE:
+            return ImageOptions(
+                quality=num("imageQuality", int),
+                resolution=(o.get("imageResolution") or None),
+            )
 
         if kind == MediaKind.VIDEO:
             return VideoOptions(

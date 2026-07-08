@@ -124,3 +124,22 @@ def test_worker_video_pipeline(tools, sample_mp4, tmp_path, run_worker):
     res = run_worker(worker)
     assert res.get("ok") is True, res
     assert out.exists()
+
+
+# ----- C4: 이미지 → 이미지 (ffmpeg 불필요, tools=None) -----
+@pytest.mark.gui
+def test_worker_image_pipeline(qapp, tmp_path, run_worker):
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from core.image import ImageOptions
+    from gui.worker import ConversionWorker
+
+    src = tmp_path / "a.png"
+    Image.new("RGB", (80, 60), (0, 128, 255)).save(src)
+    out = tmp_path / "a.jpg"
+
+    worker = ConversionWorker([(str(src), str(out), "jpg")], ImageOptions(quality=80), None)
+    res = run_worker(worker)
+    assert res.get("ok") is True, res
+    assert out.exists() and out.stat().st_size > 0

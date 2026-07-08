@@ -8,7 +8,9 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot
 
 from core.ffmpeg_tools import Tools, probe_duration
+from core.image import convert_image
 from core.media import build_command, segment_duration
+from core.registry import MediaKind, kind_of
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
@@ -50,6 +52,12 @@ class ConversionWorker(QObject):
             self.finished.emit(False, f"오류: {exc}")
 
     def _convert_one(self, index, total, inp, out, ext):
+        # 이미지는 Pillow로 인프로세스 변환(ffmpeg 불필요)
+        if kind_of(ext) == MediaKind.IMAGE:
+            convert_image(inp, out, ext, self._opt)
+            self.progress.emit((index + 1) / total)
+            return
+
         full = probe_duration(self._tools.ffprobe, inp)
         seg = segment_duration(full, self._opt)
         cmd = build_command(

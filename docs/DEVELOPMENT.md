@@ -26,7 +26,7 @@
 | 8 | 배포용 단독 실행 exe (full/lite 2종) | ✅ 구현 (`build.py`) |
 | 9 | 버전 태그 기반 GitHub Release 자동 배포 | ✅ 구현 (GitHub Actions) |
 | 10 | 영상 → 영상 변환 (C1) | ✅ 구현 |
-| 11 | 이미지 → 이미지 변환 (C4, Pillow) | ⏳ 2차 |
+| 11 | 이미지 → 이미지 변환 (C4, Pillow) | ✅ 구현 |
 | 12 | 영상 ↔ 이미지 (C5/C6), 문서 변환 | ⏳ 이후 |
 
 ---
@@ -61,7 +61,9 @@ FormatConverter/
 ├── core/                      # 변환 로직 (UI 독립 — 단독 테스트 가능)
 │   ├── registry.py            # 포맷/카테고리/라우팅 데이터 정의
 │   ├── ffmpeg_tools.py        # ffmpeg/ffprobe 탐색 + 길이 조회
-│   └── media.py               # FFmpeg 오디오 변환 명령 생성
+│   ├── media.py               # FFmpeg 오디오/비디오 변환 명령 생성(C1~C3)
+│   ├── image.py               # Pillow 이미지 변환(C4)
+│   └── updater.py             # 자동 업데이트 순수 로직
 ├── gui/                       # PySide6 + QML UI
 │   ├── backend.py             # QML↔Python 브리지 (QObject)
 │   ├── worker.py              # QThread 백그라운드 변환 워커
@@ -295,7 +297,8 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] C1 영상→영상 변환(`VideoOptions`/`build_video_command`/`build_command` 라우팅,
   해상도·fps·CRF·비트레이트 옵션, GUI가 출력 종류에 따라 오디오/비디오 옵션 전환)
 - [ ] C3 음원→음원 UI 노출 정리(현재 엔진은 지원, 입력 필터만 확장)
-- [ ] C4 이미지→이미지 변환(`core/image.py` Pillow 엔진) + registry 라우팅
+- [x] C4 이미지→이미지 변환(`core/image.py` Pillow 엔진, 품질·해상도 옵션, registry 라우팅,
+  워커가 이미지는 ffmpeg 없이 인프로세스 변환, GUI 이미지 옵션 전환)
 - [ ] 출력 폴더 선택 UI(현재는 입력 파일과 같은 폴더에 저장)
 - [ ] 변환 완료 후 폴더 열기 / 개별 파일 진행률 표시
 - [ ] 예외 메시지 한글화(코덱 미지원·손상 파일 등), 앱 아이콘(`assets/app.ico`)

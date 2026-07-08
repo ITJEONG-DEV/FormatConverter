@@ -53,6 +53,7 @@ IMPLEMENTED_ROUTES = {
     (MediaKind.VIDEO, MediaKind.VIDEO),   # C1 (영상→영상)
     (MediaKind.VIDEO, MediaKind.AUDIO),   # C2 ★ (영상→음원)
     (MediaKind.AUDIO, MediaKind.AUDIO),   # C3 (음원→음원)
+    (MediaKind.IMAGE, MediaKind.IMAGE),   # C4 (이미지→이미지, Pillow)
 }
 
 
@@ -77,6 +78,9 @@ _PRIORITY = {
     # video
     "mp4": 0, "mkv": 1, "mov": 2, "webm": 3, "avi": 4, "m4v": 5,
     "flv": 6, "mpeg": 7, "ts": 8, "3gp": 9, "wmv": 10,
+    # image
+    "png": 0, "jpg": 1, "jpeg": 2, "webp": 3, "bmp": 4,
+    "tiff": 5, "gif": 6, "ico": 7, "heic": 8,
 }
 
 
