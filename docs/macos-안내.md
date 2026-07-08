@@ -2,8 +2,9 @@
 
 macOS 배포본(`FormatConverter.app`)을 쓰기 위한 안내입니다. **두 가지**만 준비하면 됩니다.
 
-> 현재 macOS 빌드는 **Apple Silicon(arm64) 전용**이며 **서명·공증되어 있지 않습니다**.
-> 그래서 처음 실행 시 아래 Gatekeeper 우회가 한 번 필요합니다.
+> macOS 빌드는 **Apple Silicon(arm64)** 과 **Intel(x86_64)** 두 가지가 있습니다.
+> 본인 Mac에 맞는 zip을 받으세요 (`...-arm64-...` / `...-x86_64-...`).
+> 모두 **서명·공증되어 있지 않으므로** 처음 실행 시 아래 Gatekeeper 우회가 한 번 필요합니다.
 
 ## 1. ffmpeg 설치 (필수)
 변환 엔진 ffmpeg는 앱에 포함되어 있지 않습니다. [Homebrew](https://brew.sh)로 설치하세요.

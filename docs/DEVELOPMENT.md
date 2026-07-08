@@ -316,7 +316,8 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
   import한 모듈만 번들하기 때문. 남는 건 필수 Qt+QML 런타임+Python = PySide6 QML 앱의 하한.
   배포 크기(다운로드): lite ≈178MB / full zip ≈245MB(ffmpeg 포함) / mac ≈146MB.
   UPX는 미설치 + Qt DLL에 오탐/불안정 위험이라 보류. (build.py에 메모)
-- [ ] macOS Intel(x86_64) 빌드 또는 universal2 지원 검토
+- [x] macOS Intel(x86_64) 빌드: `release.yml` build-macos를 매트릭스로(macos-14 arm64 +
+  macos-13 x86_64) → 아키텍처별 zip 2종 발행.
 - [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포
 - [x] C1 영상→영상 변환(`VideoOptions`/`build_video_command`/`build_command` 라우팅,
   해상도·fps·CRF·비트레이트 옵션, GUI가 출력 종류에 따라 오디오/비디오 옵션 전환)

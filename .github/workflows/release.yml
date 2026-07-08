@@ -133,11 +133,19 @@ jobs:
 
   # macOS 앱(.app) 빌드 → 같은 릴리스에 자산 추가.
   # Windows 릴리스가 먼저 생성된 뒤(needs) zip 만 덧붙인다.
-  # 참고: macos-latest 는 Apple Silicon(arm64) 러너 → 산출물도 arm64 전용.
-  #       ffmpeg 는 번들하지 않으며, 사용자는 brew install ffmpeg 로 연동한다(docs/macos-안내.md).
+  # macos-14 = Apple Silicon(arm64), macos-13 = Intel(x86_64). 각 아키텍처별 전용 산출물.
+  # ffmpeg 는 번들하지 않으며, 사용자는 brew install ffmpeg 로 연동한다(docs/macos-안내.md).
   build-macos:
     needs: build-and-release
-    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            arch: arm64
+          - runner: macos-13
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -158,7 +166,7 @@ jobs:
           VER="${GITHUB_REF_NAME#v}"
           echo "__version__ = \"$VER\"" > version.py
           echo "VERSION=$VER" >> "$GITHUB_ENV"
-          echo "Building macOS version $VER"
+          echo "Building macOS ${{ matrix.arch }} version $VER"
 
       - name: Build (.app)
         run: python build.py
@@ -171,7 +179,7 @@ jobs:
           cp -R "dist/FormatConverter.app" "$STAGE/"
           cp "docs/macos-안내.md" "$STAGE/"
           # ditto 는 .app 의 심볼릭링크·권한·리소스포크를 보존한다(zip 보다 안전).
-          ditto -c -k --keepParent "$STAGE" "release/FormatConverter-macos-arm64-$VERSION.zip"
+          ditto -c -k --keepParent "$STAGE" "release/FormatConverter-macos-${{ matrix.arch }}-$VERSION.zip"
           ls -la release
 
       - name: Upload macOS asset to release
