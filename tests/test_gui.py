@@ -185,6 +185,51 @@ def test_backend_clear(qapp):
 
 
 @pytest.mark.gui
+def test_backend_reorder(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/p/a.png", "file:///C:/p/b.png", "file:///C:/p/c.png"])
+    assert b.files == ["a.png", "b.png", "c.png"]
+
+    b.moveDown(0)
+    assert b.files == ["b.png", "a.png", "c.png"]
+    b.moveUp(2)
+    assert b.files == ["b.png", "c.png", "a.png"]
+
+    # 경계는 무시(no-op)
+    b.moveUp(0)
+    b.moveDown(2)
+    assert b.files == ["b.png", "c.png", "a.png"]
+
+
+@pytest.mark.gui
+def test_backend_remove(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/p/a.png", "file:///C:/p/b.png"])
+    b.removeAt(0)
+    assert b.files == ["b.png"]
+    b.removeAt(0)
+    assert b.files == []
+
+
+@pytest.mark.gui
+def test_reorder_preserves_output_selection(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/v/a.mp4", "file:///C:/v/b.mp4"])
+    b.setOutputFormat("mp3")
+    assert b.outputKind == "audio"
+
+    b.moveDown(0)                       # 순서만 변경
+    assert b.outputKind == "audio"      # 선택 유지(초기화 안 됨)
+    assert "mp3" in b.outputFormats
+
+
+@pytest.mark.gui
 def test_options_conversion(qapp):
     from gui.backend import Backend
 

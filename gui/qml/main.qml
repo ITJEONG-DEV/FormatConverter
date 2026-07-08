@@ -89,11 +89,33 @@ ApplicationWindow {
                 anchors.fill: parent
                 clip: true
                 model: backend.files
-                delegate: Label {
+                delegate: RowLayout {
                     width: fileList.width
-                    text: "• " + modelData
-                    elide: Text.ElideMiddle
-                    padding: 4
+                    spacing: 2
+                    Label {
+                        Layout.fillWidth: true
+                        text: (index + 1) + ". " + modelData
+                        elide: Text.ElideMiddle
+                        padding: 4
+                    }
+                    ToolButton {
+                        text: "▲"
+                        implicitWidth: 30
+                        enabled: index > 0 && !backend.busy
+                        onClicked: backend.moveUp(index)
+                    }
+                    ToolButton {
+                        text: "▼"
+                        implicitWidth: 30
+                        enabled: index < backend.files.length - 1 && !backend.busy
+                        onClicked: backend.moveDown(index)
+                    }
+                    ToolButton {
+                        text: "✕"
+                        implicitWidth: 30
+                        enabled: !backend.busy
+                        onClicked: backend.removeAt(index)
+                    }
                 }
             }
         }

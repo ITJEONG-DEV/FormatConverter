@@ -96,14 +96,20 @@ class Backend(QObject):
         self.inputKindChanged.emit()
 
     def _refresh_output_formats(self):
+        prev = self._output_format
         if not self._files:
             self._output_formats = []
             self._output_format = ""
         else:
             first_ext = Path(self._files[0]).suffix.lstrip(".")
             self._output_formats = output_formats_for(first_ext)
-        if self._output_formats:
-            self._output_format = self._output_formats[0]
+            # 순서 변경·제거로 목록이 갱신돼도 기존 선택이 유효하면 유지
+            if prev in self._output_formats:
+                self._output_format = prev
+            elif self._output_formats:
+                self._output_format = self._output_formats[0]
+            else:
+                self._output_format = ""
         self._set_input_kind()
         self.outputFormatsChanged.emit()
         self._set_output_kind()
@@ -136,6 +142,36 @@ class Backend(QObject):
         self._refresh_output_formats()
         self._set_progress(0.0)
         self._set_status("파일을 끌어다 놓으세요.")
+
+    @Slot(int)
+    def moveUp(self, index: int):
+        if 0 < index < len(self._files):
+            self._files[index - 1], self._files[index] = (
+                self._files[index], self._files[index - 1],
+            )
+            self.filesChanged.emit()
+            self._refresh_output_formats()
+
+    @Slot(int)
+    def moveDown(self, index: int):
+        if 0 <= index < len(self._files) - 1:
+            self._files[index + 1], self._files[index] = (
+                self._files[index], self._files[index + 1],
+            )
+            self.filesChanged.emit()
+            self._refresh_output_formats()
+
+    @Slot(int)
+    def removeAt(self, index: int):
+        if 0 <= index < len(self._files):
+            self._files.pop(index)
+            self.filesChanged.emit()
+            self._refresh_output_formats()
+            if self._files:
+                self._set_status(f"{len(self._files)}개 파일 준비됨.")
+            else:
+                self._set_progress(0.0)
+                self._set_status("파일을 끌어다 놓으세요.")
 
     @Slot(str)
     def setOutputFormat(self, fmt: str):

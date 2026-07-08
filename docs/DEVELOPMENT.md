@@ -299,10 +299,12 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] C6 이미지 시퀀스 → 영상(`VideoSequenceOptions`/`write_concat_file`/
   `build_image_sequence_command`): 다중 입력→단일 출력 잡 모델 확장(워커가 리스트 입력을
   concat 데멀서로 처리), scale+pad로 크기 통일. 이미지당 시간·영상 크기·fps 옵션.
-  (제약: 순서는 추가 순서 고정 — 순서 변경 UI는 후속 과제)
+  (순서는 파일 목록의 ▲/▼ 버튼으로 조정 — 아래 항목)
+- [x] 파일 목록 순서 변경(▲/▼)·개별 제거(✕) UI + 백엔드 `moveUp`/`moveDown`/`removeAt`.
+  순서 변경 시 선택한 출력 포맷은 유지(유효하면 초기화 안 함). C6 시퀀스 순서에 사용.
 
 ### 다음 할 일 (우선순위 순)
-- [ ] C6 이미지 **순서 변경 UI**(드래그로 재정렬) — 현재는 추가한 순서 고정
+- [ ] (선택) 순서 변경을 **드래그**로도 — 현재는 ▲/▼ 버튼
 - [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량
 - [ ] macOS Intel(x86_64) 빌드 또는 universal2 지원 검토
 - [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포
