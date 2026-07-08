@@ -204,6 +204,66 @@ def build_video_command(
 
 
 # ---------------------------------------------------------------------------
+# 영상 → 이미지 (C5: gif/webp 애니메이션 · 단일 프레임 추출)
+# ---------------------------------------------------------------------------
+
+# 애니메이션으로 만들 출력(구간 전체) vs 단일 프레임 추출
+_ANIMATED_IMAGE = {"gif", "webp"}
+
+
+@dataclass
+class VideoToImageOptions:
+    fps: int | None = None            # gif/webp 프레임레이트(None=10)
+    resolution: str | None = None     # "480"(높이) 또는 "640x480". None=원본
+    trim_start: float | None = None   # 애니: 시작 / 단일프레임: 추출 시점(초)
+    trim_end: float | None = None     # 애니: 끝(초)
+
+
+def build_video_to_image_command(
+    ffmpeg: str,
+    input_path: str,
+    output_path: str,
+    out_ext: str,
+    opt: VideoToImageOptions,
+    seg_dur: float | None = None,
+) -> list[str]:
+    ext = out_ext.lower()
+    animated = ext in _ANIMATED_IMAGE
+
+    args = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error"]
+
+    if opt.trim_start:
+        args += ["-ss", str(opt.trim_start)]
+    if animated and opt.trim_end is not None:
+        args += ["-to", str(opt.trim_end)]
+
+    args += ["-i", input_path]
+
+    scale = _scale_filter(opt.resolution)
+
+    if animated:
+        fps = opt.fps or 10
+        vf = f"fps={fps}"
+        if scale:
+            vf += f",{scale}"
+        if ext == "gif":
+            # 단일 패스로 팔레트 생성·적용 → 고품질 GIF
+            vf += ",split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse"
+            args += ["-vf", vf, "-loop", "0"]
+        else:  # 애니메이션 webp
+            args += ["-vf", vf, "-loop", "0", "-an"]
+        args += ["-progress", "pipe:1", "-nostats"]
+    else:
+        # 단일 프레임 추출 (png/jpg/bmp/tiff)
+        args += ["-frames:v", "1"]
+        if scale:
+            args += ["-vf", scale]
+
+    args += [output_path]
+    return args
+
+
+# ---------------------------------------------------------------------------
 def build_command(
     ffmpeg: str,
     input_path: str,
@@ -212,7 +272,10 @@ def build_command(
     opt,
     seg_dur: float | None = None,
 ) -> list[str]:
-    """출력 종류에 따라 오디오/비디오 명령 생성으로 라우팅."""
-    if kind_of(out_ext) == MediaKind.VIDEO:
+    """출력 종류에 따라 오디오/비디오/이미지(영상소스) 명령 생성으로 라우팅."""
+    out_kind = kind_of(out_ext)
+    if out_kind == MediaKind.VIDEO:
         return build_video_command(ffmpeg, input_path, output_path, out_ext, opt, seg_dur)
+    if out_kind == MediaKind.IMAGE:
+        return build_video_to_image_command(ffmpeg, input_path, output_path, out_ext, opt, seg_dur)
     return build_audio_command(ffmpeg, input_path, output_path, out_ext, opt, seg_dur)

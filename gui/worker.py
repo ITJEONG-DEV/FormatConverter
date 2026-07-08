@@ -52,8 +52,10 @@ class ConversionWorker(QObject):
             self.finished.emit(False, f"오류: {exc}")
 
     def _convert_one(self, index, total, inp, out, ext):
-        # 이미지는 Pillow로 인프로세스 변환(ffmpeg 불필요)
-        if kind_of(ext) == MediaKind.IMAGE:
+        # 입력이 이미지면 Pillow로 인프로세스 변환(C4, ffmpeg 불필요).
+        # 영상→이미지(C5)는 입력이 영상이므로 아래 ffmpeg 경로로 간다.
+        in_ext = Path(inp).suffix.lstrip(".")
+        if kind_of(in_ext) == MediaKind.IMAGE:
             convert_image(inp, out, ext, self._opt)
             self.progress.emit((index + 1) / total)
             return

@@ -27,7 +27,8 @@
 | 9 | 버전 태그 기반 GitHub Release 자동 배포 | ✅ 구현 (GitHub Actions) |
 | 10 | 영상 → 영상 변환 (C1) | ✅ 구현 |
 | 11 | 이미지 → 이미지 변환 (C4, Pillow) | ✅ 구현 |
-| 12 | 영상 ↔ 이미지 (C5/C6), 문서 변환 | ⏳ 이후 |
+| 12 | 영상 → 이미지 (C5: gif/프레임) | ✅ 구현 |
+| 13 | 이미지 → 영상 (C6, 시퀀스), 문서 변환 | ⏳ 이후 |
 
 ---
 
@@ -290,7 +291,13 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] macOS 배포: `build.py` OS 분기(.app), brew ffmpeg 연동(Homebrew 경로 탐색),
   `release.yml` build-macos 잡(arm64 zip), `docs/macos-안내.md`, 서명·공증 가이드 문서화
 
+- [x] C5 영상→이미지 변환(`VideoToImageOptions`/`build_video_to_image_command`):
+  gif/webp 애니메이션(단일패스 팔레트)·단일 프레임 추출(png/jpg), GUI는 inputKind+outputKind로
+  옵션 전환. 워커는 입력 종류로 Pillow/ffmpeg 분기.
+
 ### 다음 할 일 (우선순위 순)
+- [ ] **C6 이미지 → 영상**(이미지 시퀀스 → 슬라이드쇼/mp4). 다중 입력→단일 출력이라
+  현재 파일별 잡 모델과 달라 UI(순서 지정·단일 출력)·워커 구조 확장 필요.
 - [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량
 - [ ] macOS Intel(x86_64) 빌드 또는 universal2 지원 검토
 - [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포

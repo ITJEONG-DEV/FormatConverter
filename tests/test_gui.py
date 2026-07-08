@@ -129,6 +129,29 @@ def test_backend_image_kind_and_options(qapp):
 
 
 @pytest.mark.gui
+def test_backend_video_to_image(qapp):
+    from core.registry import MediaKind
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/v/clip.mp4"])
+    assert b.inputKind == "video"
+    assert "gif" in b.outputFormats            # 영상→이미지 출력 제공
+    b.setOutputFormat("gif")
+    assert b.outputKind == "image"
+
+    # 영상 입력 + 이미지 출력 → VideoToImageOptions
+    opt = Backend._build_options(
+        {"v2iFps": 8, "v2iResolution": "480", "trimStart": "0", "trimEnd": "3"},
+        MediaKind.IMAGE, MediaKind.VIDEO,
+    )
+    assert type(opt).__name__ == "VideoToImageOptions"
+    assert opt.fps == 8
+    assert opt.resolution == "480"
+    assert opt.trim_end == 3.0
+
+
+@pytest.mark.gui
 def test_backend_clear(qapp):
     from gui.backend import Backend
 

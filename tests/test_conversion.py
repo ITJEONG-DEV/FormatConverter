@@ -8,7 +8,8 @@ import subprocess
 import pytest
 
 from core.media import (
-    AudioOptions, VideoOptions, build_audio_command, build_command, segment_duration,
+    AudioOptions, VideoOptions, VideoToImageOptions,
+    build_audio_command, build_command, segment_duration,
 )
 
 
@@ -121,6 +122,47 @@ def test_worker_video_pipeline(tools, sample_mp4, tmp_path, run_worker):
 
     out = tmp_path / "w.mkv"
     worker = ConversionWorker([(str(sample_mp4), str(out), "mkv")], VideoOptions(), tools)
+    res = run_worker(worker)
+    assert res.get("ok") is True, res
+    assert out.exists()
+
+
+# ----- C5: 영상 → 이미지 -----
+@pytest.mark.ffmpeg
+def test_video_to_gif(tools, sample_mp4, tmp_path):
+    out = tmp_path / "o.gif"
+    opt = VideoToImageOptions(fps=8, resolution="120", trim_start=0, trim_end=2)
+    seg = segment_duration(3.0, opt)
+    cmd = build_command(tools.ffmpeg, str(sample_mp4), str(out), "gif", opt, seg)
+    subprocess.run(cmd, check=True, capture_output=True)
+    assert out.exists() and out.stat().st_size > 0
+    assert _video_codec(tools.ffprobe, out) == "gif"
+
+
+@pytest.mark.ffmpeg
+def test_video_to_png_frame(tools, sample_mp4, tmp_path):
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    out = tmp_path / "f.png"
+    cmd = build_command(tools.ffmpeg, str(sample_mp4), str(out), "png",
+                        VideoToImageOptions(trim_start=1), None)
+    subprocess.run(cmd, check=True, capture_output=True)
+    assert out.exists()
+    with Image.open(out) as im:
+        assert im.format == "PNG"
+
+
+@pytest.mark.ffmpeg
+@pytest.mark.gui
+def test_worker_video_to_gif_pipeline(tools, sample_mp4, tmp_path, run_worker):
+    from gui.worker import ConversionWorker
+
+    out = tmp_path / "w.gif"
+    worker = ConversionWorker(
+        [(str(sample_mp4), str(out), "gif")],
+        VideoToImageOptions(fps=8, trim_start=0, trim_end=1), tools,
+    )
     res = run_worker(worker)
     assert res.get("ok") is True, res
     assert out.exists()

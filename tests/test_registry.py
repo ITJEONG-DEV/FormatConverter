@@ -25,9 +25,10 @@ def test_output_formats_for_image():
 
 def test_output_formats_for_video():
     outs = output_formats_for("mp4")
-    # 영상 출력(C1) + 음원 출력(C2) 모두 제공
+    # 영상 출력(C1) + 음원 출력(C2) + 이미지 출력(C5) 모두 제공
     assert "mkv" in outs and "webm" in outs       # 영상→영상
     assert "mp3" in outs and "aac" in outs        # 영상→음원
+    assert "gif" in outs and "png" in outs        # 영상→이미지
     # 영상 입력이므로 영상 포맷이 먼저, 동일 확장자(mp4)는 기본값이 아님
     assert outs[0] == "mkv"
     assert outs.index("mkv") < outs.index("mp3")  # 같은 종류(영상) 먼저

@@ -54,6 +54,7 @@ IMPLEMENTED_ROUTES = {
     (MediaKind.VIDEO, MediaKind.AUDIO),   # C2 ★ (영상→음원)
     (MediaKind.AUDIO, MediaKind.AUDIO),   # C3 (음원→음원)
     (MediaKind.IMAGE, MediaKind.IMAGE),   # C4 (이미지→이미지, Pillow)
+    (MediaKind.VIDEO, MediaKind.IMAGE),   # C5 (영상→이미지: gif/프레임)
 }
 
 

@@ -24,7 +24,9 @@ ApplicationWindow {
             "videoFps": fpsBox.currentValue,
             "videoQuality": qualityBox.currentValue,
             "imageResolution": imgResolutionBox.currentValue,
-            "imageQuality": imgQualityBox.currentValue
+            "imageQuality": imgQualityBox.currentValue,
+            "v2iFps": v2iFpsBox.currentValue,
+            "v2iResolution": v2iResolutionBox.currentValue
         }
     }
 
@@ -254,15 +256,15 @@ ApplicationWindow {
                     ]
                 }
 
-                // ----- 이미지 전용 (이미지 출력일 때) -----
+                // ----- 이미지 → 이미지 전용 (C4, Pillow) -----
                 Label {
                     text: "해상도"
-                    visible: backend.outputKind === "image"
+                    visible: backend.inputKind === "image" && backend.outputKind === "image"
                 }
                 ComboBox {
                     id: imgResolutionBox
                     Layout.fillWidth: true
-                    visible: backend.outputKind === "image"
+                    visible: backend.inputKind === "image" && backend.outputKind === "image"
                     textRole: "text"
                     valueRole: "value"
                     model: [
@@ -275,12 +277,12 @@ ApplicationWindow {
 
                 Label {
                     text: "품질 (jpg/webp)"
-                    visible: backend.outputKind === "image"
+                    visible: backend.inputKind === "image" && backend.outputKind === "image"
                 }
                 ComboBox {
                     id: imgQualityBox
                     Layout.fillWidth: true
-                    visible: backend.outputKind === "image"
+                    visible: backend.inputKind === "image" && backend.outputKind === "image"
                     textRole: "text"
                     valueRole: "value"
                     model: [
@@ -291,14 +293,64 @@ ApplicationWindow {
                     ]
                 }
 
-                // ----- 구간 자르기 (영상·음원만) -----
+                // ----- 영상 → 이미지 전용 (C5: gif/webp 애니메이션 · 프레임 추출) -----
+                Label {
+                    text: "프레임레이트 (gif/webp)"
+                    visible: backend.inputKind === "video" && backend.outputKind === "image"
+                }
+                ComboBox {
+                    id: v2iFpsBox
+                    Layout.fillWidth: true
+                    visible: backend.inputKind === "video" && backend.outputKind === "image"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "기본 (10)", value: 0 },
+                        { text: "15 fps", value: 15 },
+                        { text: "10 fps", value: 10 },
+                        { text: "5 fps", value: 5 }
+                    ]
+                }
+
+                Label {
+                    text: "해상도"
+                    visible: backend.inputKind === "video" && backend.outputKind === "image"
+                }
+                ComboBox {
+                    id: v2iResolutionBox
+                    Layout.fillWidth: true
+                    visible: backend.inputKind === "video" && backend.outputKind === "image"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "원본 유지", value: "" },
+                        { text: "높이 480px", value: "480" },
+                        { text: "높이 360px", value: "360" },
+                        { text: "높이 240px", value: "240" }
+                    ]
+                }
+
+                Label {
+                    text: ""
+                    visible: backend.inputKind === "video" && backend.outputKind === "image"
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: backend.inputKind === "video" && backend.outputKind === "image"
+                    wrapMode: Label.Wrap
+                    color: "#888"
+                    font.pixelSize: 11
+                    text: "gif/webp는 아래 '구간'을 애니메이션으로, png/jpg는 '시작' 시점의 한 프레임을 추출합니다."
+                }
+
+                // ----- 구간 자르기 (영상 입력이면 이미지 출력에도 사용) -----
                 Label {
                     text: "구간 자르기 (초)"
-                    visible: backend.outputKind !== "image"
+                    visible: backend.outputKind !== "image" || backend.inputKind === "video"
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    visible: backend.outputKind !== "image"
+                    visible: backend.outputKind !== "image" || backend.inputKind === "video"
                     TextField {
                         id: trimStartField
                         Layout.fillWidth: true

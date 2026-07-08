@@ -9,7 +9,7 @@ from PySide6.QtCore import (
 
 from core.ffmpeg_tools import FFmpegNotFound, find_tools
 from core.image import ImageOptions
-from core.media import AudioOptions, VideoOptions
+from core.media import AudioOptions, VideoOptions, VideoToImageOptions
 from core.registry import MediaKind, is_supported_input, kind_of, output_formats_for
 from gui.worker import ConversionWorker
 
@@ -18,6 +18,7 @@ class Backend(QObject):
     filesChanged = Signal()
     outputFormatsChanged = Signal()
     outputKindChanged = Signal()
+    inputKindChanged = Signal()
     progressChanged = Signal()
     statusChanged = Signal()
     busyChanged = Signal()
@@ -28,6 +29,7 @@ class Backend(QObject):
         self._output_formats: list[str] = []
         self._output_format: str = ""
         self._output_kind: str = ""
+        self._input_kind: str = ""
         self._progress: float = 0.0
         self._status: str = "파일을 끌어다 놓으세요."
         self._busy: bool = False
@@ -45,8 +47,13 @@ class Backend(QObject):
 
     @Property(str, notify=outputKindChanged)
     def outputKind(self):
-        """현재 선택된 출력 포맷의 종류: 'video' / 'audio' / ''."""
+        """현재 선택된 출력 포맷의 종류: 'video' / 'audio' / 'image' / ''."""
         return self._output_kind
+
+    @Property(str, notify=inputKindChanged)
+    def inputKind(self):
+        """추가된 입력 파일의 종류: 'video' / 'audio' / 'image' / ''."""
+        return self._input_kind
 
     @Property(float, notify=progressChanged)
     def progress(self):
@@ -78,6 +85,14 @@ class Backend(QObject):
         self._output_kind = k.value if k else ""
         self.outputKindChanged.emit()
 
+    def _set_input_kind(self):
+        if self._files:
+            k = kind_of(Path(self._files[0]).suffix.lstrip("."))
+            self._input_kind = k.value if k else ""
+        else:
+            self._input_kind = ""
+        self.inputKindChanged.emit()
+
     def _refresh_output_formats(self):
         if not self._files:
             self._output_formats = []
@@ -87,6 +102,7 @@ class Backend(QObject):
             self._output_formats = output_formats_for(first_ext)
         if self._output_formats:
             self._output_format = self._output_formats[0]
+        self._set_input_kind()
         self.outputFormatsChanged.emit()
         self._set_output_kind()
 
@@ -136,17 +152,19 @@ class Backend(QObject):
             self._output_formats[0] if self._output_formats else "mp3"
         )
         out_kind = kind_of(out_ext)
+        in_kind = kind_of(Path(self._files[0]).suffix.lstrip("."))
 
-        # 이미지 변환은 Pillow(인프로세스)라 ffmpeg가 필요 없다.
+        # 입력이 이미지면 Pillow(인프로세스)라 ffmpeg 불필요.
+        # 그 외(영상·음원 입력, 영상→이미지 포함)는 ffmpeg 필요.
         tools = None
-        if out_kind in (MediaKind.VIDEO, MediaKind.AUDIO):
+        if in_kind != MediaKind.IMAGE:
             try:
                 tools = find_tools()
             except FFmpegNotFound as exc:
                 self._set_status(str(exc))
                 return
 
-        opt = self._build_options(options, out_kind)
+        opt = self._build_options(options, out_kind, in_kind)
 
         jobs = []
         for f in self._files:
@@ -184,7 +202,7 @@ class Backend(QObject):
         self._worker = None
 
     @staticmethod
-    def _build_options(o, kind=None):
+    def _build_options(o, kind=None, in_kind=None):
         def num(key, cast, default=None):
             v = o.get(key)
             if v in (None, "", 0, "0"):
@@ -195,6 +213,15 @@ class Backend(QObject):
                 return default
 
         if kind == MediaKind.IMAGE:
+            # 영상 → 이미지(C5): gif/webp 애니메이션 또는 프레임 추출
+            if in_kind == MediaKind.VIDEO:
+                return VideoToImageOptions(
+                    fps=num("v2iFps", int),
+                    resolution=(o.get("v2iResolution") or None),
+                    trim_start=num("trimStart", float),
+                    trim_end=num("trimEnd", float),
+                )
+            # 이미지 → 이미지(C4, Pillow)
             return ImageOptions(
                 quality=num("imageQuality", int),
                 resolution=(o.get("imageResolution") or None),

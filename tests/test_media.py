@@ -137,3 +137,47 @@ def test_build_command_routes_by_kind():
     assert "-c:v" in vc and "-vn" not in vc
     ac = build_command("ffmpeg", "in.mp4", "out.mp3", "mp3", AudioOptions())
     assert "-vn" in ac and "-c:v" not in ac
+
+
+# ----- C5: 영상 → 이미지 -----
+from core.media import VideoToImageOptions, build_video_to_image_command
+
+
+def v2i(ext="gif", seg=None, **kw):
+    return build_video_to_image_command(
+        "ffmpeg", "in.mp4", f"out.{ext}", ext, VideoToImageOptions(**kw), seg)
+
+
+def test_gif_animated_palette():
+    c = v2i("gif", fps=15, resolution="480", trim_start=1, trim_end=4)
+    vf = c[c.index("-vf") + 1]
+    assert "fps=15" in vf
+    assert "scale=-2:480" in vf
+    assert "palettegen" in vf and "paletteuse" in vf
+    assert "-loop" in c
+    i = c.index("-i")
+    assert c.index("-ss") < i and c.index("-to") < i     # 구간을 입력측에 배치
+
+
+def test_webp_animated():
+    c = v2i("webp", fps=10)
+    vf = c[c.index("-vf") + 1]
+    assert "fps=10" in vf
+    assert "-loop" in c and "-an" in c
+    assert "palettegen" not in vf                        # webp는 팔레트 미사용
+
+
+def test_single_frame_png():
+    c = v2i("png", trim_start=5)
+    assert c[c.index("-frames:v") + 1] == "1"
+    assert "-to" not in c                                # 단일 프레임엔 종료시각 없음
+    assert c.index("-ss") < c.index("-i")
+
+
+def test_default_gif_fps():
+    assert "fps=10" in v2i("gif")[v2i("gif").index("-vf") + 1]
+
+
+def test_build_command_video_to_image():
+    c = build_command("ffmpeg", "in.mp4", "out.gif", "gif", VideoToImageOptions())
+    assert "palettegen" in c[c.index("-vf") + 1]         # 영상→이미지 경로로 라우팅
