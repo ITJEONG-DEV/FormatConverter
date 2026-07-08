@@ -98,6 +98,12 @@ VSVersionInfo(
     return path
 
 
+# 배포 용량 메모: PyInstaller의 PySide6 훅은 실제 import한 모듈만 번들하므로
+# --exclude-module 로 WebEngine/3D/Charts 등을 빼도 용량이 줄지 않는다(측정상 0).
+# 남는 용량은 필수 Qt(Core/Gui/Qml/Quick/Network/OpenGL) + QML 런타임 + Python 이라
+# 사실상 PySide6 QML 앱의 하한이다. (lite onefile ≈ 178MB) 자세한 내용 docs/DEVELOPMENT.md.
+
+
 def _common_args() -> list[str]:
     args = [
         SRC,

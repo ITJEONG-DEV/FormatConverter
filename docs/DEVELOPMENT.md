@@ -311,7 +311,11 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 
 ### 다음 할 일 (우선순위 순)
 - [ ] (선택) 순서 변경을 **드래그**로도 — 현재는 ▲/▼ 버튼
-- [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량
+- [x] **배포 용량 조사(결론: 축소 여지 적음)**: `--exclude-module`로 WebEngine/3D/Charts 등을
+  빼도 **용량 변화 0**(측정: lite onefile 제외有/無 모두 177.8MB). PyInstaller의 PySide6 훅이
+  import한 모듈만 번들하기 때문. 남는 건 필수 Qt+QML 런타임+Python = PySide6 QML 앱의 하한.
+  배포 크기(다운로드): lite ≈178MB / full zip ≈245MB(ffmpeg 포함) / mac ≈146MB.
+  UPX는 미설치 + Qt DLL에 오탐/불안정 위험이라 보류. (build.py에 메모)
 - [ ] macOS Intel(x86_64) 빌드 또는 universal2 지원 검토
 - [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포
 - [x] C1 영상→영상 변환(`VideoOptions`/`build_video_command`/`build_command` 라우팅,
