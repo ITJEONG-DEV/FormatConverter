@@ -1,15 +1,19 @@
 """백그라운드 변환 워커. UI 스레드를 막지 않도록 QThread에서 실행된다."""
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, Slot
 
 from core.ffmpeg_tools import Tools, probe_duration
 from core.image import convert_image
-from core.media import build_command, segment_duration
+from core.media import (
+    build_command, build_image_sequence_command, segment_duration, write_concat_file,
+)
 from core.registry import MediaKind, kind_of
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
@@ -44,14 +48,19 @@ class ConversionWorker(QObject):
                 if self._cancel:
                     self.finished.emit(False, "사용자가 취소했습니다.")
                     return
-                self.status.emit(f"변환 중 ({i + 1}/{total}): {Path(inp).name}")
+                self.status.emit(f"변환 중 ({i + 1}/{total}): {Path(out).name}")
                 self._convert_one(i, total, inp, out, ext)
             self.progress.emit(1.0)
-            self.finished.emit(True, f"완료: {total}개 파일 변환")
+            self.finished.emit(True, f"완료: {total}개 변환")
         except Exception as exc:  # noqa: BLE001 - UI에 그대로 전달
             self.finished.emit(False, f"오류: {exc}")
 
     def _convert_one(self, index, total, inp, out, ext):
+        # 이미지 시퀀스 → 영상(C6): inp가 리스트
+        if isinstance(inp, (list, tuple)):
+            self._convert_sequence(index, total, list(inp), out, ext)
+            return
+
         # 입력이 이미지면 Pillow로 인프로세스 변환(C4, ffmpeg 불필요).
         # 영상→이미지(C5)는 입력이 영상이므로 아래 ffmpeg 경로로 간다.
         in_ext = Path(inp).suffix.lstrip(".")
@@ -62,9 +71,21 @@ class ConversionWorker(QObject):
 
         full = probe_duration(self._tools.ffprobe, inp)
         seg = segment_duration(full, self._opt)
-        cmd = build_command(
-            self._tools.ffmpeg, inp, out, ext, self._opt, seg
-        )
+        cmd = build_command(self._tools.ffmpeg, inp, out, ext, self._opt, seg)
+        self._run_proc(cmd, seg, index, total, Path(out).name)
+
+    def _convert_sequence(self, index, total, images, out, ext):
+        tmp = tempfile.mkdtemp(prefix="fc_seq_")
+        try:
+            concat = str(Path(tmp) / "list.txt")
+            write_concat_file(images, self._opt.seconds_per_image, concat)
+            seg = max(0.01, len(images) * self._opt.seconds_per_image)
+            cmd = build_image_sequence_command(self._tools.ffmpeg, concat, out, ext, self._opt)
+            self._run_proc(cmd, seg, index, total, Path(out).name)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def _run_proc(self, cmd, seg, index, total, name):
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, creationflags=_NO_WINDOW,
@@ -76,11 +97,10 @@ class ConversionWorker(QObject):
                 break
             frac = self._parse_progress(line, seg)
             if frac is not None:
-                overall = (index + min(frac, 1.0)) / total
-                self.progress.emit(overall)
+                self.progress.emit((index + min(frac, 1.0)) / total)
         proc.wait()
         if proc.returncode not in (0, None) and not self._cancel:
-            raise RuntimeError(f"ffmpeg 종료 코드 {proc.returncode} ({Path(inp).name})")
+            raise RuntimeError(f"ffmpeg 종료 코드 {proc.returncode} ({name})")
 
     @staticmethod
     def _parse_progress(line: str, seg_dur: float | None) -> float | None:

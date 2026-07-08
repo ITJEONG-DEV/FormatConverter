@@ -152,6 +152,28 @@ def test_backend_video_to_image(qapp):
 
 
 @pytest.mark.gui
+def test_backend_image_sequence_to_video(qapp):
+    from core.registry import MediaKind
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/p/a.png", "file:///C:/p/b.png"])
+    assert b.inputKind == "image"
+    assert "mp4" in b.outputFormats            # 이미지 시퀀스→영상(C6)
+    b.setOutputFormat("mp4")
+    assert b.outputKind == "video"
+
+    opt = Backend._build_options(
+        {"seqSeconds": 2, "seqResolution": "1920x1080", "seqFps": 24},
+        MediaKind.VIDEO, MediaKind.IMAGE,
+    )
+    assert type(opt).__name__ == "VideoSequenceOptions"
+    assert opt.seconds_per_image == 2
+    assert opt.resolution == "1920x1080"
+    assert opt.fps == 24
+
+
+@pytest.mark.gui
 def test_backend_clear(qapp):
     from gui.backend import Backend
 

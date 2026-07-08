@@ -181,3 +181,46 @@ def test_default_gif_fps():
 def test_build_command_video_to_image():
     c = build_command("ffmpeg", "in.mp4", "out.gif", "gif", VideoToImageOptions())
     assert "palettegen" in c[c.index("-vf") + 1]         # 영상→이미지 경로로 라우팅
+
+
+# ----- C6: 이미지 시퀀스 → 영상 -----
+from core.media import (
+    VideoSequenceOptions, _seq_dims, build_image_sequence_command, write_concat_file,
+)
+
+
+def test_seq_dims():
+    assert _seq_dims("1280x720") == (1280, 720)
+    assert _seq_dims(None) == (1280, 720)
+    assert _seq_dims("640x480") == (640, 480)
+
+
+def test_write_concat_file(tmp_path):
+    dest = tmp_path / "list.txt"
+    write_concat_file(["/a/1.png", "/a/2.png"], 0.5, str(dest))
+    text = dest.read_text(encoding="utf-8")
+    assert text.startswith("ffconcat version 1.0")
+    assert "file '/a/1.png'" in text
+    assert "duration 0.5" in text
+    # 마지막 이미지는 잘리지 않도록 한 번 더 기재됨
+    assert text.count("file '/a/2.png'") == 2
+
+
+def test_write_concat_escapes_backslash(tmp_path):
+    dest = tmp_path / "l.txt"
+    write_concat_file(["C:\\imgs\\a.png"], 1, str(dest))
+    assert "file 'C:/imgs/a.png'" in dest.read_text(encoding="utf-8")
+
+
+def test_image_sequence_command():
+    c = build_image_sequence_command(
+        "ffmpeg", "list.txt", "out.mp4", "mp4",
+        VideoSequenceOptions(fps=24, resolution="1280x720"),
+    )
+    assert c[c.index("-f") + 1] == "concat"
+    assert "-safe" in c
+    assert c[c.index("-i") + 1] == "list.txt"
+    vf = c[c.index("-vf") + 1]
+    assert "scale=1280:720" in vf and "pad=1280:720" in vf
+    assert "fps=24" in vf and "format=yuv420p" in vf
+    assert c[c.index("-c:v") + 1] == "libx264"

@@ -26,7 +26,10 @@ ApplicationWindow {
             "imageResolution": imgResolutionBox.currentValue,
             "imageQuality": imgQualityBox.currentValue,
             "v2iFps": v2iFpsBox.currentValue,
-            "v2iResolution": v2iResolutionBox.currentValue
+            "v2iResolution": v2iResolutionBox.currentValue,
+            "seqSeconds": seqSecondsBox.currentValue,
+            "seqResolution": seqResolutionBox.currentValue,
+            "seqFps": seqFpsBox.currentValue
         }
     }
 
@@ -127,12 +130,12 @@ ApplicationWindow {
 
                 Label {
                     text: "비트레이트"
-                    visible: backend.outputKind !== "image"
+                    visible: backend.outputKind !== "image" && backend.inputKind !== "image"
                 }
                 ComboBox {
                     id: bitrateBox
                     Layout.fillWidth: true
-                    visible: backend.outputKind !== "image"
+                    visible: backend.outputKind !== "image" && backend.inputKind !== "image"
                     textRole: "text"
                     valueRole: "value"
                     currentIndex: 1
@@ -201,15 +204,15 @@ ApplicationWindow {
                     text: "볼륨 자동 정규화 (loudnorm)"
                 }
 
-                // ----- 비디오 전용 (영상 출력일 때) -----
+                // ----- 영상 → 영상 전용 (C1) -----
                 Label {
                     text: "해상도"
-                    visible: backend.outputKind === "video"
+                    visible: backend.inputKind === "video" && backend.outputKind === "video"
                 }
                 ComboBox {
                     id: resolutionBox
                     Layout.fillWidth: true
-                    visible: backend.outputKind === "video"
+                    visible: backend.inputKind === "video" && backend.outputKind === "video"
                     textRole: "text"
                     valueRole: "value"
                     model: [
@@ -222,12 +225,12 @@ ApplicationWindow {
 
                 Label {
                     text: "프레임레이트"
-                    visible: backend.outputKind === "video"
+                    visible: backend.inputKind === "video" && backend.outputKind === "video"
                 }
                 ComboBox {
                     id: fpsBox
                     Layout.fillWidth: true
-                    visible: backend.outputKind === "video"
+                    visible: backend.inputKind === "video" && backend.outputKind === "video"
                     textRole: "text"
                     valueRole: "value"
                     model: [
@@ -240,12 +243,12 @@ ApplicationWindow {
 
                 Label {
                     text: "화질"
-                    visible: backend.outputKind === "video"
+                    visible: backend.inputKind === "video" && backend.outputKind === "video"
                 }
                 ComboBox {
                     id: qualityBox
                     Layout.fillWidth: true
-                    visible: backend.outputKind === "video"
+                    visible: backend.inputKind === "video" && backend.outputKind === "video"
                     textRole: "text"
                     valueRole: "value"
                     model: [
@@ -343,14 +346,82 @@ ApplicationWindow {
                     text: "gif/webp는 아래 '구간'을 애니메이션으로, png/jpg는 '시작' 시점의 한 프레임을 추출합니다."
                 }
 
-                // ----- 구간 자르기 (영상 입력이면 이미지 출력에도 사용) -----
+                // ----- 이미지 시퀀스 → 영상 전용 (C6, 슬라이드쇼) -----
+                Label {
+                    text: "이미지당 시간"
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                }
+                ComboBox {
+                    id: seqSecondsBox
+                    Layout.fillWidth: true
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                    textRole: "text"
+                    valueRole: "value"
+                    currentIndex: 1
+                    model: [
+                        { text: "2초", value: 2 },
+                        { text: "1초", value: 1 },
+                        { text: "0.5초", value: 0.5 }
+                    ]
+                }
+
+                Label {
+                    text: "영상 크기"
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                }
+                ComboBox {
+                    id: seqResolutionBox
+                    Layout.fillWidth: true
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                    textRole: "text"
+                    valueRole: "value"
+                    currentIndex: 1
+                    model: [
+                        { text: "1920x1080", value: "1920x1080" },
+                        { text: "1280x720", value: "1280x720" },
+                        { text: "854x480", value: "854x480" }
+                    ]
+                }
+
+                Label {
+                    text: "프레임레이트"
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                }
+                ComboBox {
+                    id: seqFpsBox
+                    Layout.fillWidth: true
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                    textRole: "text"
+                    valueRole: "value"
+                    currentIndex: 0
+                    model: [
+                        { text: "30 fps", value: 30 },
+                        { text: "24 fps", value: 24 },
+                        { text: "15 fps", value: 15 }
+                    ]
+                }
+
+                Label {
+                    text: ""
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: backend.inputKind === "image" && backend.outputKind === "video"
+                    wrapMode: Label.Wrap
+                    color: "#888"
+                    font.pixelSize: 11
+                    text: "추가한 이미지들이 순서대로 하나의 영상이 됩니다. 크기가 다르면 검은 여백으로 맞춥니다."
+                }
+
+                // ----- 구간 자르기 (영상·음원 입력만) -----
                 Label {
                     text: "구간 자르기 (초)"
-                    visible: backend.outputKind !== "image" || backend.inputKind === "video"
+                    visible: backend.inputKind === "video" || backend.inputKind === "audio"
                 }
                 RowLayout {
                     Layout.fillWidth: true
-                    visible: backend.outputKind !== "image" || backend.inputKind === "video"
+                    visible: backend.inputKind === "video" || backend.inputKind === "audio"
                     TextField {
                         id: trimStartField
                         Layout.fillWidth: true

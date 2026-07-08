@@ -28,7 +28,8 @@
 | 10 | 영상 → 영상 변환 (C1) | ✅ 구현 |
 | 11 | 이미지 → 이미지 변환 (C4, Pillow) | ✅ 구현 |
 | 12 | 영상 → 이미지 (C5: gif/프레임) | ✅ 구현 |
-| 13 | 이미지 → 영상 (C6, 시퀀스), 문서 변환 | ⏳ 이후 |
+| 13 | 이미지 시퀀스 → 영상 (C6) | ✅ 구현 |
+| 14 | 문서 변환 (pdf 등) | ⏳ 이후 |
 
 ---
 
@@ -295,9 +296,13 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
   gif/webp 애니메이션(단일패스 팔레트)·단일 프레임 추출(png/jpg), GUI는 inputKind+outputKind로
   옵션 전환. 워커는 입력 종류로 Pillow/ffmpeg 분기.
 
+- [x] C6 이미지 시퀀스 → 영상(`VideoSequenceOptions`/`write_concat_file`/
+  `build_image_sequence_command`): 다중 입력→단일 출력 잡 모델 확장(워커가 리스트 입력을
+  concat 데멀서로 처리), scale+pad로 크기 통일. 이미지당 시간·영상 크기·fps 옵션.
+  (제약: 순서는 추가 순서 고정 — 순서 변경 UI는 후속 과제)
+
 ### 다음 할 일 (우선순위 순)
-- [ ] **C6 이미지 → 영상**(이미지 시퀀스 → 슬라이드쇼/mp4). 다중 입력→단일 출력이라
-  현재 파일별 잡 모델과 달라 UI(순서 지정·단일 출력)·워커 구조 확장 필요.
+- [ ] C6 이미지 **순서 변경 UI**(드래그로 재정렬) — 현재는 추가한 순서 고정
 - [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량
 - [ ] macOS Intel(x86_64) 빌드 또는 universal2 지원 검토
 - [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포

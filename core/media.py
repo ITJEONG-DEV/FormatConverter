@@ -264,6 +264,66 @@ def build_video_to_image_command(
 
 
 # ---------------------------------------------------------------------------
+# 이미지 시퀀스 → 영상 (C6: 다중 이미지 → 단일 영상, concat 데멀서)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class VideoSequenceOptions:
+    seconds_per_image: float = 1.0    # 각 이미지 표시 시간(초)
+    resolution: str | None = None     # 출력 프레임 크기 "1280x720". None=1280x720
+    fps: int = 30                     # 출력 영상 fps
+
+
+def _seq_dims(resolution: str | None) -> tuple[int, int]:
+    res = (resolution or "1280x720").lower()
+    if "x" in res:
+        w, _, h = res.partition("x")
+        return int(w), int(h)
+    h = int(res)
+    return (int(round(h * 16 / 9)) // 2 * 2, h)
+
+
+def _concat_escape(path) -> str:
+    # concat 데멀서: 경로는 정슬래시, 작은따옴표는 '\'' 로 이스케이프
+    return str(path).replace("\\", "/").replace("'", "'\\''")
+
+
+def write_concat_file(images, seconds_per_image: float, dest: str) -> None:
+    """concat 데멀서용 목록 파일 작성. 마지막 이미지는 잘리지 않도록 한 번 더 기재."""
+    lines = ["ffconcat version 1.0"]
+    for img in images:
+        lines.append(f"file '{_concat_escape(img)}'")
+        lines.append(f"duration {seconds_per_image}")
+    if images:
+        lines.append(f"file '{_concat_escape(images[-1])}'")
+    with open(dest, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+
+def build_image_sequence_command(
+    ffmpeg: str,
+    concat_path: str,
+    output_path: str,
+    out_ext: str,
+    opt: VideoSequenceOptions,
+) -> list[str]:
+    vcodec, _ = VIDEO_CODECS.get(out_ext.lower(), ("libx264", "aac"))
+    w, h = _seq_dims(opt.resolution)
+    # 크기가 다른 이미지도 letterbox 로 통일(concat 은 동일 크기 요구) + 호환 픽셀포맷
+    vf = (
+        f"scale={w}:{h}:force_original_aspect_ratio=decrease,"
+        f"pad={w}:{h}:(ow-iw)/2:(oh-ih)/2,fps={opt.fps},format=yuv420p"
+    )
+    return [
+        ffmpeg, "-y", "-hide_banner", "-loglevel", "error",
+        "-f", "concat", "-safe", "0", "-i", concat_path,
+        "-vf", vf, "-c:v", vcodec,
+        "-progress", "pipe:1", "-nostats", output_path,
+    ]
+
+
+# ---------------------------------------------------------------------------
 def build_command(
     ffmpeg: str,
     input_path: str,

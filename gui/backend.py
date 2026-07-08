@@ -9,7 +9,9 @@ from PySide6.QtCore import (
 
 from core.ffmpeg_tools import FFmpegNotFound, find_tools
 from core.image import ImageOptions
-from core.media import AudioOptions, VideoOptions, VideoToImageOptions
+from core.media import (
+    AudioOptions, VideoOptions, VideoSequenceOptions, VideoToImageOptions,
+)
 from core.registry import MediaKind, is_supported_input, kind_of, output_formats_for
 from gui.worker import ConversionWorker
 
@@ -154,10 +156,11 @@ class Backend(QObject):
         out_kind = kind_of(out_ext)
         in_kind = kind_of(Path(self._files[0]).suffix.lstrip("."))
 
-        # 입력이 이미지면 Pillow(인프로세스)라 ffmpeg 불필요.
-        # 그 외(영상·음원 입력, 영상→이미지 포함)는 ffmpeg 필요.
+        # 이미지→이미지(C4, Pillow)만 ffmpeg 불필요. 그 외는 모두 ffmpeg 필요
+        # (영상·음원 입력, 영상→이미지 C5, 이미지 시퀀스→영상 C6).
+        pillow_only = in_kind == MediaKind.IMAGE and out_kind == MediaKind.IMAGE
         tools = None
-        if in_kind != MediaKind.IMAGE:
+        if not pillow_only:
             try:
                 tools = find_tools()
             except FFmpegNotFound as exc:
@@ -166,13 +169,19 @@ class Backend(QObject):
 
         opt = self._build_options(options, out_kind, in_kind)
 
-        jobs = []
-        for f in self._files:
-            src = Path(f)
-            dst = src.with_name(f"{src.stem}.{out_ext}")
-            if dst == src:
-                dst = src.with_name(f"{src.stem}_converted.{out_ext}")
-            jobs.append((str(src), str(dst), out_ext))
+        if in_kind == MediaKind.IMAGE and out_kind == MediaKind.VIDEO:
+            # C6: 모든 이미지(추가 순서) → 단일 슬라이드쇼 영상 1개
+            first = Path(self._files[0])
+            dst = first.with_name(f"{first.stem}_slideshow.{out_ext}")
+            jobs = [([str(Path(f)) for f in self._files], str(dst), out_ext)]
+        else:
+            jobs = []
+            for f in self._files:
+                src = Path(f)
+                dst = src.with_name(f"{src.stem}.{out_ext}")
+                if dst == src:
+                    dst = src.with_name(f"{src.stem}_converted.{out_ext}")
+                jobs.append((str(src), str(dst), out_ext))
 
         self._set_progress(0.0)
         self._set_busy(True)
@@ -228,6 +237,14 @@ class Backend(QObject):
             )
 
         if kind == MediaKind.VIDEO:
+            # 이미지 시퀀스 → 영상(C6)
+            if in_kind == MediaKind.IMAGE:
+                return VideoSequenceOptions(
+                    seconds_per_image=num("seqSeconds", float, 1.0) or 1.0,
+                    resolution=(o.get("seqResolution") or None),
+                    fps=num("seqFps", int, 30) or 30,
+                )
+            # 영상 → 영상(C1)
             return VideoOptions(
                 crf=num("videoQuality", int),
                 resolution=(o.get("videoResolution") or None),

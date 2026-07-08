@@ -18,9 +18,11 @@ def test_is_supported_input():
 
 def test_output_formats_for_image():
     outs = output_formats_for("png")
-    assert "jpg" in outs and "webp" in outs and "bmp" in outs
-    assert outs[0] == "jpg"                       # 흔한 포맷 우선, 동일 확장자(png)는 뒤로
-    assert "mp3" not in outs and "mp4" not in outs  # 이미지 → 미디어 없음
+    assert "jpg" in outs and "webp" in outs and "bmp" in outs  # 이미지→이미지(C4)
+    assert "mp4" in outs                          # 이미지 시퀀스→영상(C6)
+    assert "mp3" not in outs                       # 이미지 → 음원 없음
+    assert outs[0] == "jpg"                       # 같은 종류(이미지) 먼저, 동일 확장자(png)는 뒤로
+    assert outs.index("jpg") < outs.index("mp4")  # 이미지 출력이 영상 출력보다 앞
 
 
 def test_output_formats_for_video():

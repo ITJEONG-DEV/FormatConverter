@@ -168,6 +168,64 @@ def test_worker_video_to_gif_pipeline(tools, sample_mp4, tmp_path, run_worker):
     assert out.exists()
 
 
+# ----- C6: 이미지 시퀀스 → 영상 -----
+@pytest.mark.ffmpeg
+def test_image_sequence_to_mp4(tools, tmp_path):
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from core.media import (
+        VideoSequenceOptions, build_image_sequence_command, write_concat_file,
+    )
+
+    imgs = []
+    for i, color in enumerate([(255, 0, 0), (0, 255, 0), (0, 0, 255)]):
+        p = tmp_path / f"img{i}.png"
+        Image.new("RGB", (320, 240), color).save(p)
+        imgs.append(str(p))
+
+    opt = VideoSequenceOptions(seconds_per_image=0.5, resolution="640x480", fps=10)
+    concat = str(tmp_path / "list.txt")
+    write_concat_file(imgs, opt.seconds_per_image, concat)
+    out = tmp_path / "slide.mp4"
+    cmd = build_image_sequence_command(tools.ffmpeg, concat, str(out), "mp4", opt)
+    subprocess.run(cmd, check=True, capture_output=True)
+
+    assert out.exists() and out.stat().st_size > 0
+    dims = subprocess.run(
+        [tools.ffprobe, "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height", "-of", "default=nw=1:nk=1", str(out)],
+        capture_output=True, text=True, check=True,
+    ).stdout.split()
+    assert dims == ["640", "480"]
+
+
+@pytest.mark.ffmpeg
+@pytest.mark.gui
+def test_worker_sequence_pipeline(tools, tmp_path, run_worker):
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from core.media import VideoSequenceOptions
+    from gui.worker import ConversionWorker
+
+    imgs = []
+    for i, color in enumerate([(10, 20, 30), (40, 50, 60)]):
+        p = tmp_path / f"s{i}.png"
+        Image.new("RGB", (100, 100), color).save(p)
+        imgs.append(str(p))
+    out = tmp_path / "seq.mp4"
+
+    # inp가 리스트인 시퀀스 잡
+    worker = ConversionWorker(
+        [(imgs, str(out), "mp4")],
+        VideoSequenceOptions(seconds_per_image=0.5, resolution="320x240", fps=10), tools,
+    )
+    res = run_worker(worker)
+    assert res.get("ok") is True, res
+    assert out.exists() and out.stat().st_size > 0
+
+
 # ----- C4: 이미지 → 이미지 (ffmpeg 불필요, tools=None) -----
 @pytest.mark.gui
 def test_worker_image_pipeline(qapp, tmp_path, run_worker):
