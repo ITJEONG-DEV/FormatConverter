@@ -339,7 +339,8 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
   `--convert-to`로 변환, 임시 프로필로 인스턴스 충돌 회피, 출력명 보정. 문서 카테고리 추가.
   (제약: registry가 종류 기반이라 docx→xlsx 등 비현실적 조합도 목록엔 노출 — 실패 시 안내.
   LibreOffice 미설치 시 변환 시작에서 안내 메시지.)
-- [ ] 앱 아이콘(`assets/app.ico`·`app.icns`) 제작 후 빌드 반영
+- [x] 앱 아이콘: `assets/make_icon.py`(Pillow)로 변환(⇄) 심볼 아이콘 생성 →
+  `app.ico`/`app.icns`(exe/앱 아이콘, build.py 자동 사용) + `app.png`(창/작업표시줄, main.py).
 - [x] 문서 조합 필터: 워드/스프레드시트/프레젠테이션 계열(`_DOC_FAMILY`/`_FAMILY_OUTPUTS`)로
   나눠 실제 되는 조합만 노출(docx→xlsx 등 제거). pdf→문서는 미제공(pdf→이미지만).
   출력 없는 종류는 카테고리에서 자동 제외.

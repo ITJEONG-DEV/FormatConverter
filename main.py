@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 
 from gui.backend import Backend
@@ -27,6 +27,10 @@ def main() -> int:
     app.setApplicationName("FormatConverter")
     app.setOrganizationName("FormatConverter")
     app.setApplicationVersion(__version__)
+
+    icon_path = _base_dir() / "assets" / "app.png"
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     engine = QQmlApplicationEngine()
     backend = Backend()

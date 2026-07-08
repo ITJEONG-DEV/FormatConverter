@@ -114,6 +114,9 @@ def _common_args() -> list[str]:
         "--paths", ROOT,
         # QML 리소스 번들 (런타임에 _MEIPASS/gui/qml 로 로드)
         "--add-data", f"{QML_DIR}{SEP}gui/qml",
+        # 창/작업표시줄 아이콘용 png (있을 때만)
+        *(["--add-data", f"{os.path.join(ROOT, 'assets', 'app.png')}{SEP}assets"]
+          if os.path.exists(os.path.join(ROOT, "assets", "app.png")) else []),
         # QML 앱은 Python에서 QtQuick를 직접 import 하지 않으므로 명시적으로 포함해
         # Qt Quick / Controls 플러그인이 누락되지 않게 한다.
         "--hidden-import", "PySide6.QtQml",
