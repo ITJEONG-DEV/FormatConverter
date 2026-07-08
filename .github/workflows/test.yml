@@ -40,5 +40,5 @@ jobs:
           Copy-Item $ff.FullName bin/ffmpeg.exe  -Force
           Copy-Item $fp.FullName bin/ffprobe.exe -Force
 
-      - name: Run tests (단위 + GUI + 통합)
-        run: python -m pytest
+      - name: Run tests (단위 + GUI + 통합) + 커버리지
+        run: python -m pytest --cov=core --cov=gui --cov-report=term-missing

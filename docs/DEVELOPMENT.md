@@ -201,7 +201,9 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 
 - 테스트는 **pytest** 3계층(① 단위 · ② GUI 스모크 · ③ 실제 ffmpeg 통합). 상세는 `docs/TEST.md`.
 - 기능 추가·수정·버그 수정 때마다 **`pytest` 전체 회귀**로 검증한다. (현재 37개, ~1초)
-- CI: `.github/workflows/test.yml` 이 dev/main push·PR 에서 전체 테스트 실행.
+- 로컬 자동화: `.githooks/pre-push` 가 push 직전 전체 테스트를 돌려 실패 시 push 차단
+  (활성화: `git config core.hooksPath .githooks`). 상세 `docs/TEST.md §6`.
+- CI: `.github/workflows/test.yml` 이 dev/main push·PR 에서 전체 테스트(+커버리지) 실행.
   릴리스(`release.yml`)는 **테스트 통과 후에만**(`needs: test`) 빌드 → 깨진 채 배포 방지.
 
 ### 브랜치 전략

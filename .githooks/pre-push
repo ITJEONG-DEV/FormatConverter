@@ -1,0 +1,24 @@
+#!/bin/sh
+# push 전 전체 회귀 테스트를 자동 실행한다. 실패하면 push를 막는다.
+# 활성화(최초 1회): git config core.hooksPath .githooks
+# 우회가 꼭 필요하면: git push --no-verify
+
+if ! command -v python >/dev/null 2>&1; then
+  echo "[pre-push] python 미발견 — 테스트 건너뜀"
+  exit 0
+fi
+
+if ! python -c "import pytest" >/dev/null 2>&1; then
+  echo "[pre-push] pytest 미설치 — 테스트 건너뜀 (pip install -r requirements-dev.txt)"
+  exit 0
+fi
+
+echo "[pre-push] 전체 회귀 테스트 실행..."
+python -m pytest -q
+if [ $? -ne 0 ]; then
+  echo "[pre-push] 테스트 실패 — push를 중단합니다. (우회: git push --no-verify)"
+  exit 1
+fi
+
+echo "[pre-push] 테스트 통과 ✅"
+exit 0

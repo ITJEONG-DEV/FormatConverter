@@ -26,9 +26,13 @@ FormatConverter 의 자동 테스트 구조 · 실행 방법 · 규칙을 정리
 # 준비(최초 1회)
 pip install -r requirements.txt -r requirements-dev.txt
 # ffmpeg 준비: winget install Gyan.FFmpeg  또는 bin/ 에 ffmpeg.exe·ffprobe.exe 배치
+git config core.hooksPath .githooks    # push 전 자동 테스트 훅 활성화(§6)
 
 # 전체 회귀 — 기능 추가/수정 후 항상 이걸 실행
 pytest
+
+# 커버리지 포함
+pytest --cov=core --cov=gui --cov-report=term-missing
 
 # 단위 테스트만 (가장 빠름, ffmpeg·GUI 불필요)
 pytest -m "not gui and not ffmpeg"
@@ -91,6 +95,7 @@ tests/
 
 - 두 워크플로 모두 `windows-latest` + `QT_QPA_PLATFORM=offscreen` 로 GUI 스모크까지 실행.
 - CI는 ffmpeg(essentials)를 내려받아 `bin/`에 배치하므로 **통합 테스트까지 전부 수행**된다.
+- `test.yml` 은 커버리지(`--cov`)도 리포트한다.
 - **배포 게이트**: 테스트가 깨지면 릴리스 빌드가 자동 중단되어, 깨진 채 배포되는 것을 막는다.
 
 ### 브랜치 전략
@@ -99,18 +104,34 @@ tests/
 
 ---
 
-## 6. 새 기능을 추가/수정했다면 (체크리스트)
+## 6. 로컬 자동화 (pre-push 훅)
+
+원격에 올리기 전에 로컬에서도 자동으로 회귀를 막는다. 버전 관리되는 `.githooks/pre-push` 가
+**push 직전 전체 `pytest` 를 실행**하고, 실패하면 push를 중단한다.
+
+```powershell
+git config core.hooksPath .githooks   # 최초 1회(클론마다) 활성화
+```
+
+- 이후 `git push` 하면 자동으로 테스트가 돌고, 통과해야 실제 push 된다.
+- pytest/파이썬이 없으면 조용히 건너뛴다(기여자 환경 배려).
+- 꼭 우회해야 하면 `git push --no-verify`.
+- CI(`test.yml`)와 **이중 안전망**: 로컬에서 먼저 걸러 CI 낭비를 줄이고, CI가 최종 확인.
+
+---
+
+## 7. 새 기능을 추가/수정했다면 (체크리스트)
 
 1. 해당 로직에 **단위 테스트**를 추가(가능하면 순수 함수로 분리해 ①에서 검증).
 2. 실제 변환 경로가 바뀌었으면 `test_conversion.py` 에 **통합 테스트** 추가.
 3. UI 흐름이 바뀌었으면 `test_gui.py` 에 **스모크 테스트** 추가.
 4. 로컬에서 **`pytest`** 로 전체 회귀 초록불 확인.
-5. `dev` 에 push → `test.yml` 이 자동 재확인.
+5. `dev` 에 push → pre-push 훅 + `test.yml` 이 자동 재확인.
 6. 배포 시 `main` 머지 후 태그 push → 테스트 통과해야 릴리스 진행.
 
 ---
 
-## 7. 현재 커버리지 요약
+## 8. 현재 커버리지 요약
 
 - **registry**: `kind_of`, `is_supported_input`, `output_formats_for`(영상/음원/미지원).
 - **media**: 코덱 선택(8종), 기본 비트레이트, 무손실 비트레이트 생략, 구간(`-ss/-to`) 입력측 배치,
