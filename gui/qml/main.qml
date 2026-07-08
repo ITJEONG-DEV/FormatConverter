@@ -121,14 +121,24 @@ ApplicationWindow {
             }
         }
 
-        // ---- 출력 포맷 ----
+        // ---- 출력 종류 + 포맷 ----
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
-            Label { text: "출력 포맷:"; font.pixelSize: 14 }
+            spacing: 8
+            Label { text: "출력:"; font.pixelSize: 14 }
+            // 출력 종류(영상/음원/이미지) — 종류가 2개 이상일 때만 노출
+            ComboBox {
+                id: categoryBox
+                Layout.preferredWidth: 90
+                visible: backend.outputCategories.length > 1
+                textRole: "label"
+                valueRole: "value"
+                model: backend.outputCategories
+                onActivated: backend.setOutputCategory(currentValue)
+            }
             ComboBox {
                 id: outputBox
-                Layout.preferredWidth: 140
+                Layout.preferredWidth: 130
                 model: backend.outputFormats
                 onActivated: {
                     backend.setOutputFormat(currentText)

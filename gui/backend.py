@@ -14,13 +14,17 @@ from core.image import ImageOptions
 from core.media import (
     AudioOptions, VideoOptions, VideoSequenceOptions, VideoToImageOptions,
 )
-from core.registry import MediaKind, is_supported_input, kind_of, output_formats_for
+from core.registry import (
+    KIND_LABEL, MediaKind, is_supported_input, kind_of,
+    output_categories_for, output_formats_for,
+)
 from gui.worker import ConversionWorker
 
 
 class Backend(QObject):
     filesChanged = Signal()
     outputFormatsChanged = Signal()
+    outputCategoriesChanged = Signal()
     outputKindChanged = Signal()
     inputKindChanged = Signal()
     progressChanged = Signal()
@@ -35,6 +39,8 @@ class Backend(QObject):
         self._output_format: str = ""
         self._output_kind: str = ""
         self._input_kind: str = ""
+        self._categories: list = []
+        self._selected_category: MediaKind | None = None
         self._progress: float = 0.0
         self._status: str = "파일을 끌어다 놓으세요."
         self._busy: bool = False
@@ -68,6 +74,15 @@ class Backend(QObject):
     @Property(list, notify=outputFormatsChanged)
     def outputFormats(self):
         return self._output_formats
+
+    @Property(list, notify=outputCategoriesChanged)
+    def outputCategories(self):
+        """가능한 출력 종류: [{label, value}, ...] (영상/음원/이미지)."""
+        return [{"label": KIND_LABEL[k], "value": k.value} for k in self._categories]
+
+    @Property(str, notify=outputCategoriesChanged)
+    def selectedCategory(self):
+        return self._selected_category.value if self._selected_category else ""
 
     @Property(str, notify=outputKindChanged)
     def outputKind(self):
@@ -120,11 +135,17 @@ class Backend(QObject):
     def _refresh_output_formats(self):
         prev = self._output_format
         if not self._files:
+            self._categories = []
+            self._selected_category = None
             self._output_formats = []
             self._output_format = ""
         else:
             first_ext = Path(self._files[0]).suffix.lstrip(".")
-            self._output_formats = output_formats_for(first_ext)
+            self._categories = output_categories_for(first_ext)
+            # 기존 선택 종류가 유효하면 유지, 아니면 기본(같은 종류) 선택
+            if self._selected_category not in self._categories:
+                self._selected_category = self._categories[0] if self._categories else None
+            self._output_formats = output_formats_for(first_ext, self._selected_category)
             # 순서 변경·제거로 목록이 갱신돼도 기존 선택이 유효하면 유지
             if prev in self._output_formats:
                 self._output_format = prev
@@ -133,6 +154,22 @@ class Backend(QObject):
             else:
                 self._output_format = ""
         self._set_input_kind()
+        self.outputCategoriesChanged.emit()
+        self.outputFormatsChanged.emit()
+        self._set_output_kind()
+        self._recompute_estimate()
+
+    @Slot(str)
+    def setOutputCategory(self, value: str):
+        target = next((k for k in self._categories if k.value == value), None)
+        if target is None or target == self._selected_category:
+            return
+        self._selected_category = target
+        if self._files:
+            first_ext = Path(self._files[0]).suffix.lstrip(".")
+            self._output_formats = output_formats_for(first_ext, target)
+            self._output_format = self._output_formats[0] if self._output_formats else ""
+        self.outputCategoriesChanged.emit()
         self.outputFormatsChanged.emit()
         self._set_output_kind()
         self._recompute_estimate()

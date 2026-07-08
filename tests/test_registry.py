@@ -1,5 +1,23 @@
 """① 단위 테스트 — 포맷/카테고리 라우팅 (core/registry.py)."""
-from core.registry import MediaKind, is_supported_input, kind_of, output_formats_for
+from core.registry import (
+    MediaKind, is_supported_input, kind_of, output_categories_for, output_formats_for,
+)
+
+
+def test_output_categories():
+    assert output_categories_for("mp4") == [
+        MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.IMAGE,
+    ]
+    assert output_categories_for("wav") == [MediaKind.AUDIO]
+    assert output_categories_for("png") == [MediaKind.IMAGE, MediaKind.VIDEO]
+    assert output_categories_for("txt") == []
+
+
+def test_output_formats_by_category():
+    auds = output_formats_for("mp4", MediaKind.AUDIO)
+    assert "mp3" in auds and "mkv" not in auds and "gif" not in auds
+    imgs = output_formats_for("mp4", MediaKind.IMAGE)
+    assert "gif" in imgs and "mp3" not in imgs and "mkv" not in imgs
 
 
 def test_kind_of():

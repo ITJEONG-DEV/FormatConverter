@@ -76,8 +76,42 @@ def test_backend_output_formats(qapp):
 
     b = Backend()
     b.addUrls(["file:///C:/a/movie.mp4"])
-    assert "mp3" in b.outputFormats      # 음원 출력(C2)
-    assert "mkv" in b.outputFormats      # 영상 출력(C1)
+    # 기본 종류는 영상 → 영상 포맷만 노출(목록이 짧아짐)
+    assert "mkv" in b.outputFormats
+    assert "mp3" not in b.outputFormats
+    # 음원 종류로 전환하면 음원 포맷
+    b.setOutputCategory("audio")
+    assert "mp3" in b.outputFormats
+
+
+@pytest.mark.gui
+def test_backend_output_category(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/v/a.mp4"])
+    assert [c["value"] for c in b.outputCategories] == ["video", "audio", "image"]
+    assert b.selectedCategory == "video"
+    assert "mkv" in b.outputFormats and "mp3" not in b.outputFormats
+
+    b.setOutputCategory("audio")
+    assert b.selectedCategory == "audio"
+    assert b.outputKind == "audio"
+    assert "mp3" in b.outputFormats and "mkv" not in b.outputFormats
+
+    b.setOutputCategory("image")
+    assert "gif" in b.outputFormats
+    assert b.outputKind == "image"
+
+
+@pytest.mark.gui
+def test_audio_input_single_category(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/a/song.wav"])
+    # 음원 입력은 음원 출력 한 종류뿐 → 종류 선택 UI 숨김 대상
+    assert [c["value"] for c in b.outputCategories] == ["audio"]
 
 
 @pytest.mark.gui
@@ -136,7 +170,8 @@ def test_backend_video_to_image(qapp):
     b = Backend()
     b.addUrls(["file:///C:/v/clip.mp4"])
     assert b.inputKind == "video"
-    assert "gif" in b.outputFormats            # 영상→이미지 출력 제공
+    b.setOutputCategory("image")               # 영상→이미지 종류 선택
+    assert "gif" in b.outputFormats
     b.setOutputFormat("gif")
     assert b.outputKind == "image"
 
@@ -159,7 +194,9 @@ def test_backend_image_sequence_to_video(qapp):
     b = Backend()
     b.addUrls(["file:///C:/p/a.png", "file:///C:/p/b.png"])
     assert b.inputKind == "image"
-    assert "mp4" in b.outputFormats            # 이미지 시퀀스→영상(C6)
+    assert b.selectedCategory == "image"       # 기본은 이미지→이미지
+    b.setOutputCategory("video")               # 이미지 시퀀스→영상(C6)
+    assert "mp4" in b.outputFormats
     b.setOutputFormat("mp4")
     assert b.outputKind == "video"
 
@@ -264,11 +301,13 @@ def test_reorder_preserves_output_selection(qapp):
 
     b = Backend()
     b.addUrls(["file:///C:/v/a.mp4", "file:///C:/v/b.mp4"])
+    b.setOutputCategory("audio")
     b.setOutputFormat("mp3")
     assert b.outputKind == "audio"
 
     b.moveDown(0)                       # 순서만 변경
-    assert b.outputKind == "audio"      # 선택 유지(초기화 안 됨)
+    assert b.selectedCategory == "audio"  # 종류 유지
+    assert b.outputKind == "audio"        # 포맷 유지(초기화 안 됨)
     assert "mp3" in b.outputFormats
 
 

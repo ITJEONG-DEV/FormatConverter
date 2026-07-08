@@ -86,10 +86,29 @@ _PRIORITY = {
 }
 
 
-def output_formats_for(input_ext: str) -> list[str]:
-    """입력 확장자에 대해 현재 구현된 출력 포맷 목록.
+# 출력 종류(카테고리) 표시 라벨
+KIND_LABEL = {
+    MediaKind.VIDEO: "영상",
+    MediaKind.AUDIO: "음원",
+    MediaKind.IMAGE: "이미지",
+}
+_KIND_ORDER = [MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.IMAGE]
 
-    정렬: (1) 입력과 같은 종류를 먼저(영상→영상 우선), (2) 흔한 포맷 우선,
+
+def output_categories_for(input_ext: str) -> list[MediaKind]:
+    """입력에 대해 가능한 출력 종류(카테고리) 목록. 같은 종류를 먼저."""
+    kind = kind_of(input_ext)
+    if kind is None:
+        return []
+    dsts = {dst for src, dst in IMPLEMENTED_ROUTES if src == kind}
+    return sorted(dsts, key=lambda k: (0 if k == kind else 1, _KIND_ORDER.index(k)))
+
+
+def output_formats_for(input_ext: str, category: MediaKind | None = None) -> list[str]:
+    """입력 확장자에 대해 구현된 출력 포맷 목록.
+
+    category 를 주면 해당 종류만, 없으면 전체.
+    정렬: (1) 입력과 같은 종류 먼저, (2) 흔한 포맷 우선,
     (3) 입력과 동일한 확장자는 뒤로(예: mp4 입력의 기본 출력이 mp4→mp4가 되지 않게).
     """
     input_ext = input_ext.lower().lstrip(".")
@@ -97,6 +116,8 @@ def output_formats_for(input_ext: str) -> list[str]:
     if kind is None:
         return []
     dst_kinds = {dst for src, dst in IMPLEMENTED_ROUTES if src == kind}
+    if category is not None:
+        dst_kinds = {category} & dst_kinds
     outs = [f for f in FORMATS.values() if f.kind in dst_kinds and f.can_output]
     outs.sort(key=lambda f: (
         0 if f.kind == kind else 1,      # 같은 종류 먼저
