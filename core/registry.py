@@ -64,7 +64,29 @@ IMPLEMENTED_ROUTES = {
     (MediaKind.VIDEO, MediaKind.IMAGE),   # C5 (영상→이미지: gif/프레임)
     (MediaKind.IMAGE, MediaKind.VIDEO),   # C6 (이미지 시퀀스→영상)
     (MediaKind.DOCUMENT, MediaKind.DOCUMENT),  # C7 (문서→문서, LibreOffice)
+    (MediaKind.IMAGE, MediaKind.DOCUMENT),     # C8 (이미지→pdf, Pillow)
+    (MediaKind.DOCUMENT, MediaKind.IMAGE),     # C9 (pdf→이미지, pypdfium2)
 }
+
+# 특정 경로에서만 허용되는 출력 포맷(및 표시 순서). 없으면 해당 종류 전체를 우선순위로 정렬.
+# - 비현실적 조합 방지(이미지→pdf만, pdf→이미지만)
+# - 대표 포맷을 앞으로(영상→이미지는 gif 우선)
+ROUTE_OUTPUTS = {
+    (MediaKind.VIDEO, MediaKind.IMAGE): ["gif", "webp", "png", "jpg", "jpeg", "bmp", "tiff"],
+    (MediaKind.IMAGE, MediaKind.DOCUMENT): ["pdf"],
+    (MediaKind.DOCUMENT, MediaKind.IMAGE): ["png", "jpg", "jpeg", "webp", "tiff", "bmp"],
+}
+
+# 특정 입력 확장자에서만 성립하는 경로(없으면 종류 전체 허용).
+# 문서→이미지는 pdf 렌더링만 가능(pypdfium2는 pdf만 연다).
+ROUTE_INPUT_EXTS = {
+    (MediaKind.DOCUMENT, MediaKind.IMAGE): {"pdf"},
+}
+
+
+def _route_allows_input(route, input_ext: str) -> bool:
+    allowed = ROUTE_INPUT_EXTS.get(route)
+    return allowed is None or input_ext in allowed
 
 
 def kind_of(ext: str) -> MediaKind | None:
@@ -109,32 +131,53 @@ _KIND_ORDER = [MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.IMAGE, MediaKind.DOCU
 
 def output_categories_for(input_ext: str) -> list[MediaKind]:
     """입력에 대해 가능한 출력 종류(카테고리) 목록. 같은 종류를 먼저."""
+    input_ext = input_ext.lower().lstrip(".")
     kind = kind_of(input_ext)
     if kind is None:
         return []
-    dsts = {dst for src, dst in IMPLEMENTED_ROUTES if src == kind}
+    dsts = {
+        dst for src, dst in IMPLEMENTED_ROUTES
+        if src == kind and _route_allows_input((src, dst), input_ext)
+    }
     return sorted(dsts, key=lambda k: (0 if k == kind else 1, _KIND_ORDER.index(k)))
 
 
 def output_formats_for(input_ext: str, category: MediaKind | None = None) -> list[str]:
     """입력 확장자에 대해 구현된 출력 포맷 목록.
 
-    category 를 주면 해당 종류만, 없으면 전체.
-    정렬: (1) 입력과 같은 종류 먼저, (2) 흔한 포맷 우선,
-    (3) 입력과 동일한 확장자는 뒤로(예: mp4 입력의 기본 출력이 mp4→mp4가 되지 않게).
+    category 를 주면 해당 종류만, 없으면 전체(같은 종류 먼저).
+    경로별 제한(ROUTE_OUTPUTS)이 있으면 그 목록·순서를 그대로 쓰고,
+    없으면 흔한 포맷 우선 + 동일 확장자는 뒤로 정렬한다.
     """
     input_ext = input_ext.lower().lstrip(".")
     kind = kind_of(input_ext)
     if kind is None:
         return []
-    dst_kinds = {dst for src, dst in IMPLEMENTED_ROUTES if src == kind}
-    if category is not None:
-        dst_kinds = {category} & dst_kinds
-    outs = [f for f in FORMATS.values() if f.kind in dst_kinds and f.can_output]
-    outs.sort(key=lambda f: (
-        0 if f.kind == kind else 1,      # 같은 종류 먼저
-        f.ext == input_ext,              # 동일 확장자는 뒤로
-        _PRIORITY.get(f.ext, 99),        # 흔한 포맷 우선
-        f.ext,
-    ))
-    return [f.ext for f in outs]
+
+    dsts = [
+        d for s, d in IMPLEMENTED_ROUTES
+        if s == kind and _route_allows_input((s, d), input_ext)
+    ]
+    dsts = sorted(set(dsts), key=lambda d: (0 if d == kind else 1, _KIND_ORDER.index(d)))
+
+    result: list[str] = []
+    seen: set[str] = set()
+    for dst in dsts:
+        if category is not None and dst != category:
+            continue
+        route = (kind, dst)
+        if route in ROUTE_OUTPUTS:
+            exts = list(ROUTE_OUTPUTS[route])           # 명시된 순서 유지
+        else:
+            fmts = [f for f in FORMATS.values() if f.kind == dst and f.can_output]
+            fmts.sort(key=lambda f: (
+                f.ext == input_ext,                     # 동일 확장자는 뒤로
+                _PRIORITY.get(f.ext, 99),               # 흔한 포맷 우선
+                f.ext,
+            ))
+            exts = [f.ext for f in fmts]
+        for e in exts:
+            if e in FORMATS and e not in seen:
+                seen.add(e)
+                result.append(e)
+    return result

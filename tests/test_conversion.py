@@ -276,6 +276,49 @@ def test_backend_estimate_with_real_file(qapp, sample_mp4):
     assert "KB" in b.estimatedSize
 
 
+# ----- C8/C9: 이미지↔pdf (ffmpeg 불필요) -----
+@pytest.mark.gui
+def test_worker_images_to_pdf(qapp, tmp_path, run_worker):
+    pytest.importorskip("PIL")
+    from PIL import Image
+
+    from core.image import ImageOptions
+    from gui.worker import ConversionWorker
+
+    imgs = []
+    for i, c in enumerate([(1, 2, 3), (4, 5, 6)]):
+        p = tmp_path / f"p{i}.png"
+        Image.new("RGB", (50, 50), c).save(p)
+        imgs.append(str(p))
+    out = tmp_path / "album.pdf"
+
+    worker = ConversionWorker([(imgs, str(out), "pdf")], ImageOptions(), None)
+    res = run_worker(worker)
+    assert res.get("ok") is True, res
+    assert out.exists() and out.stat().st_size > 0
+
+
+@pytest.mark.gui
+def test_worker_pdf_to_images(qapp, tmp_path, run_worker):
+    pytest.importorskip("PIL")
+    pytest.importorskip("pypdfium2")
+    from PIL import Image
+
+    from core.image import ImageOptions, images_to_pdf
+    from gui.worker import ConversionWorker
+
+    a = tmp_path / "a.png"
+    Image.new("RGB", (60, 60), (9, 9, 9)).save(a)
+    pdf = tmp_path / "d.pdf"
+    images_to_pdf([str(a)], str(pdf))
+    out = tmp_path / "d.png"
+
+    worker = ConversionWorker([(str(pdf), str(out), "png")], ImageOptions(), None)
+    res = run_worker(worker)
+    assert res.get("ok") is True, res
+    assert out.exists()
+
+
 # ----- C4: 이미지 → 이미지 (ffmpeg 불필요, tools=None) -----
 @pytest.mark.gui
 def test_worker_image_pipeline(qapp, tmp_path, run_worker):

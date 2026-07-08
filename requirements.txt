@@ -1,8 +1,11 @@
 # GUI
 PySide6>=6.6
 
-# 이미지 변환(2차 카테고리 C4 대비)
+# 이미지 변환(C4) + 이미지→pdf(C8)
 Pillow>=10.0
+
+# pdf → 이미지 렌더링(C9). BSD/Apache 라이선스(배포 안전)
+pypdfium2>=4.0
 
 # FFmpeg는 pip 패키지가 아니라 별도 실행 파일이 필요합니다.
 #   - Windows: https://www.gyan.dev/ffmpeg/builds/ 에서 받아 bin/ 에 ffmpeg.exe, ffprobe.exe 배치

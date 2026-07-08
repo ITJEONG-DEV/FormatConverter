@@ -1,7 +1,16 @@
 """① 단위 테스트 — 변환 실패 메시지 한글화 (core/errors.py)."""
 from core.errors import (
     friendly_document_error, friendly_ffmpeg_error, friendly_image_error,
+    friendly_pdf_error,
 )
+
+
+def test_pdf_encrypted():
+    assert "암호" in friendly_pdf_error(Exception("document is password protected"), "a.pdf")
+
+
+def test_pdf_generic():
+    assert "a.pdf" in friendly_pdf_error(Exception("boom"), "a.pdf")
 
 
 def test_document_no_filter():

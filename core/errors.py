@@ -34,6 +34,15 @@ def friendly_document_error(stderr: str, name: str) -> str:
     return f"{name}: 문서 변환에 실패했습니다."
 
 
+def friendly_pdf_error(exc: Exception, name: str) -> str:
+    msg = f"{exc}".lower()
+    if "password" in msg or "encrypt" in msg:
+        return f"{name}: 암호로 보호된 PDF는 변환할 수 없습니다."
+    if "no page" in msg or "페이지가 없" in msg:
+        return f"{name}: PDF에 페이지가 없습니다."
+    return f"{name}: PDF 변환에 실패했습니다."
+
+
 def friendly_image_error(exc: Exception, name: str) -> str:
     msg = f"{exc.__class__.__name__}: {exc}".lower()
     if "cannot identify image" in msg or "unidentified" in msg:

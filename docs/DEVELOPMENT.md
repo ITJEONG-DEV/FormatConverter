@@ -329,6 +329,12 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] 개별 파일 진행률 표시: 워커 `fileProgress` 시그널 + 전체/현재 파일 2단 진행바.
 - [x] 예외 메시지 한글화(`core/errors.py`): ffmpeg stderr·Pillow 예외를 흔한 원인별
   한글 안내로 매핑(스트림 없음·손상·권한·코덱 미지원·짝수 해상도 등).
+- [x] C8 이미지→pdf(`core/image.py` `images_to_pdf`, Pillow): 여러 이미지를 다중 페이지 pdf로
+  (추가 순서, N→1). 이미지 입력에 '문서' 종류 추가(pdf만).
+- [x] C9 pdf→이미지(`core/pdf.py`, pypdfium2/BSD): 각 페이지를 png/jpg 등으로 렌더(1→N,
+  `<stem>_pN.ext`). pdf 입력에 '이미지' 종류 추가. (경로 입력 제한: 문서→이미지는 pdf만)
+- [x] 영상→이미지에서 gif를 맨 앞으로(ROUTE_OUTPUTS), ico/heic 등 비현실 대상 제거.
+- [x] 경로별 출력 제한·정렬(`ROUTE_OUTPUTS`)/입력 제한(`ROUTE_INPUT_EXTS`) 메커니즘 도입.
 - [x] C7 문서→문서 변환(`core/document.py`, LibreOffice headless): soffice 탐색(PATH/설치경로),
   `--convert-to`로 변환, 임시 프로필로 인스턴스 충돌 회피, 출력명 보정. 문서 카테고리 추가.
   (제약: registry가 종류 기반이라 docx→xlsx 등 비현실적 조합도 목록엔 노출 — 실패 시 안내.

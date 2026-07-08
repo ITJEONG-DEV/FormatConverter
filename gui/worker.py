@@ -14,9 +14,11 @@ import os
 from core.document import build_convert_command, expected_output, find_soffice
 from core.errors import (
     friendly_document_error, friendly_ffmpeg_error, friendly_image_error,
+    friendly_pdf_error,
 )
 from core.ffmpeg_tools import Tools, probe_duration
-from core.image import convert_image
+from core.image import convert_image, images_to_pdf
+from core.pdf import render_pdf_to_images
 from core.media import (
     build_command, build_image_sequence_command, segment_duration, write_concat_file,
 )
@@ -66,16 +68,22 @@ class ConversionWorker(QObject):
     def _convert_one(self, index, total, inp, out, ext):
         self.fileProgress.emit(0.0)
 
-        # 이미지 시퀀스 → 영상(C6): inp가 리스트
+        # 이미지 여러 개(리스트): pdf(C8) 또는 영상(C6)
         if isinstance(inp, (list, tuple)):
-            self._convert_sequence(index, total, list(inp), out, ext)
+            if kind_of(ext) == MediaKind.DOCUMENT:
+                self._convert_images_to_pdf(index, total, list(inp), out)
+            else:
+                self._convert_sequence(index, total, list(inp), out, ext)
             return
 
         in_ext = Path(inp).suffix.lstrip(".")
 
-        # 문서 → 문서(C7): LibreOffice
+        # 문서 입력
         if kind_of(in_ext) == MediaKind.DOCUMENT:
-            self._convert_document(index, total, inp, out, ext)
+            if kind_of(ext) == MediaKind.IMAGE:
+                self._convert_pdf_to_images(index, total, inp, out, ext)  # C9
+            else:
+                self._convert_document(index, total, inp, out, ext)       # C7
             return
 
         # 입력이 이미지면 Pillow로 인프로세스 변환(C4, ffmpeg 불필요).
@@ -125,6 +133,24 @@ class ConversionWorker(QObject):
             self.progress.emit((index + 1) / total)
         finally:
             shutil.rmtree(profile, ignore_errors=True)
+
+    def _convert_images_to_pdf(self, index, total, images, out):
+        try:
+            images_to_pdf(images, out)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(friendly_image_error(exc, Path(out).name)) from exc
+        self.fileProgress.emit(1.0)
+        self.progress.emit((index + 1) / total)
+
+    def _convert_pdf_to_images(self, index, total, inp, out, ext):
+        try:
+            produced = render_pdf_to_images(inp, str(Path(out).parent), ext)
+        except Exception as exc:  # noqa: BLE001
+            raise RuntimeError(friendly_pdf_error(exc, Path(inp).name)) from exc
+        if len(produced) > 1:
+            self.status.emit(f"{Path(inp).name}: {len(produced)}개 페이지 이미지 생성")
+        self.fileProgress.emit(1.0)
+        self.progress.emit((index + 1) / total)
 
     def _run_proc(self, cmd, seg, index, total, name):
         proc = subprocess.Popen(

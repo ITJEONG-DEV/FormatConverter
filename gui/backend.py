@@ -11,6 +11,7 @@ from PySide6.QtGui import QDesktopServices
 
 from core.document import SofficeNotFound, find_soffice
 from core.estimate import estimate_output_bytes, format_size
+from core.pdf import pdf_engine_available
 from core.ffmpeg_tools import FFmpegNotFound, find_tools, probe_duration
 from core.image import ImageOptions
 from core.media import (
@@ -333,16 +334,24 @@ class Backend(QObject):
         out_kind = kind_of(out_ext)
         in_kind = kind_of(Path(self._files[0]).suffix.lstrip("."))
 
-        # 엔진 선택: 문서=LibreOffice, 이미지→이미지=Pillow(엔진 불필요), 그 외=ffmpeg.
+        # 엔진 선택:
+        #   문서→문서 = LibreOffice / 문서(pdf)→이미지 = pypdfium2
+        #   이미지→이미지·pdf = Pillow(외부 엔진 불필요) / 그 외 = ffmpeg
         tools = None
         soffice = None
-        if in_kind == MediaKind.DOCUMENT:
+        if in_kind == MediaKind.DOCUMENT and out_kind == MediaKind.DOCUMENT:
             try:
                 soffice = find_soffice()
             except SofficeNotFound as exc:
                 self._set_status(str(exc))
                 return
-        elif not (in_kind == MediaKind.IMAGE and out_kind == MediaKind.IMAGE):
+        elif in_kind == MediaKind.DOCUMENT and out_kind == MediaKind.IMAGE:
+            if not pdf_engine_available():
+                self._set_status("PDF 변환 라이브러리(pypdfium2)가 설치되어 있지 않습니다.")
+                return
+        elif in_kind == MediaKind.IMAGE and out_kind in (MediaKind.IMAGE, MediaKind.DOCUMENT):
+            pass  # Pillow
+        else:
             try:
                 tools = find_tools()
             except FFmpegNotFound as exc:
@@ -351,10 +360,11 @@ class Backend(QObject):
 
         opt = self._build_options(options, out_kind, in_kind)
 
-        if in_kind == MediaKind.IMAGE and out_kind == MediaKind.VIDEO:
-            # C6: 모든 이미지(추가 순서) → 단일 슬라이드쇼 영상 1개
+        if in_kind == MediaKind.IMAGE and out_kind in (MediaKind.VIDEO, MediaKind.DOCUMENT):
+            # 모든 이미지(추가 순서) → 단일 결과 1개 (C6 슬라이드쇼 / C8 pdf)
             first = Path(self._files[0])
-            dst = self._dest_for(first, out_ext, "_slideshow")
+            suffix = "_slideshow" if out_kind == MediaKind.VIDEO else ""
+            dst = self._dest_for(first, out_ext, suffix)
             jobs = [([str(Path(f)) for f in self._files], str(dst), out_ext)]
         else:
             jobs = [

@@ -51,6 +51,27 @@ def _resize(img: "Image.Image", resolution: str) -> "Image.Image":
     return img.resize(size, Image.Resampling.LANCZOS)
 
 
+def images_to_pdf(images, output_path: str) -> None:
+    """여러 이미지를 한 개의 다중 페이지 PDF로 저장 (C8: 이미지→pdf)."""
+    if not images:
+        raise ValueError("이미지가 없습니다.")
+    frames = []
+    try:
+        for p in images:
+            im = Image.open(p)
+            im.load()
+            if im.mode != "RGB":                 # PDF 페이지는 RGB
+                im = im.convert("RGB")
+            frames.append(im)
+        frames[0].save(output_path, "PDF", save_all=True, append_images=frames[1:])
+    finally:
+        for im in frames:
+            try:
+                im.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+
 def convert_image(input_path: str, output_path: str, out_ext: str, opt: ImageOptions) -> None:
     fmt = IMAGE_FORMATS.get(out_ext.lower(), out_ext.upper())
 

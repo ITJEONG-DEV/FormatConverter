@@ -9,8 +9,11 @@ def test_output_categories():
         MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.IMAGE,
     ]
     assert output_categories_for("wav") == [MediaKind.AUDIO]
-    assert output_categories_for("png") == [MediaKind.IMAGE, MediaKind.VIDEO]
-    assert output_categories_for("docx") == [MediaKind.DOCUMENT]
+    assert output_categories_for("png") == [
+        MediaKind.IMAGE, MediaKind.VIDEO, MediaKind.DOCUMENT,
+    ]
+    assert output_categories_for("docx") == [MediaKind.DOCUMENT]   # docx→이미지 불가(pdf만)
+    assert output_categories_for("pdf") == [MediaKind.DOCUMENT, MediaKind.IMAGE]
     assert output_categories_for("zzz") == []
 
 

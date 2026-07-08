@@ -121,10 +121,37 @@ def test_backend_document_input(qapp):
     b = Backend()
     b.addUrls(["file:///C:/d/report.docx"])
     assert b.inputKind == "document"
+    # docx는 문서→문서만 (pdf 렌더는 pdf 입력만 가능)
     assert [c["value"] for c in b.outputCategories] == ["document"]
     assert "pdf" in b.outputFormats
     b.setOutputFormat("pdf")
     assert b.outputKind == "document"
+
+
+@pytest.mark.gui
+def test_backend_image_to_pdf(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/p/a.png"])
+    assert "document" in [c["value"] for c in b.outputCategories]  # 이미지→pdf
+    b.setOutputCategory("document")
+    assert b.outputFormats == ["pdf"]
+    assert b.outputKind == "document"
+
+
+@pytest.mark.gui
+def test_backend_pdf_to_image(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/d/doc.pdf"])
+    assert b.inputKind == "document"
+    assert [c["value"] for c in b.outputCategories] == ["document", "image"]
+    b.setOutputCategory("image")
+    assert "png" in b.outputFormats and "jpg" in b.outputFormats
+    b.setOutputFormat("png")
+    assert b.outputKind == "image"
 
 
 @pytest.mark.gui
