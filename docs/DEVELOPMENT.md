@@ -321,7 +321,8 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포
 - [x] C1 영상→영상 변환(`VideoOptions`/`build_video_command`/`build_command` 라우팅,
   해상도·fps·CRF·비트레이트 옵션, GUI가 출력 종류에 따라 오디오/비디오 옵션 전환)
-- [ ] C3 음원→음원 UI 노출 정리(현재 엔진은 지원, 입력 필터만 확장)
+- [x] C3 음원→음원: 정상 동작 확인(wav→mp3/aac/flac 등). 음원 입력은 음원 종류 1개라
+  종류 선택 UI 없이 바로 포맷 선택.
 - [x] C4 이미지→이미지 변환(`core/image.py` Pillow 엔진, 품질·해상도 옵션, registry 라우팅,
   워커가 이미지는 ffmpeg 없이 인프로세스 변환, GUI 이미지 옵션 전환)
 - [x] 출력 폴더 선택 UI(FolderDialog) — 미지정 시 입력과 같은 폴더. `outputDir`/`setOutputDir`/
