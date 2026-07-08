@@ -9,6 +9,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+from core.errors import friendly_ffmpeg_error, friendly_image_error
 from core.ffmpeg_tools import Tools, probe_duration
 from core.image import convert_image
 from core.media import (
@@ -23,6 +24,7 @@ class ConversionWorker(QObject):
     """jobs: list of (input_path, output_path, out_ext)."""
 
     progress = Signal(float)          # 전체 진행률 0.0~1.0
+    fileProgress = Signal(float)      # 현재 파일 진행률 0.0~1.0
     status = Signal(str)              # 상태 텍스트
     finished = Signal(bool, str)      # (성공여부, 메시지)
 
@@ -52,10 +54,12 @@ class ConversionWorker(QObject):
                 self._convert_one(i, total, inp, out, ext)
             self.progress.emit(1.0)
             self.finished.emit(True, f"완료: {total}개 변환")
-        except Exception as exc:  # noqa: BLE001 - UI에 그대로 전달
-            self.finished.emit(False, f"오류: {exc}")
+        except Exception as exc:  # noqa: BLE001 - 친화적 메시지를 그대로 전달
+            self.finished.emit(False, str(exc))
 
     def _convert_one(self, index, total, inp, out, ext):
+        self.fileProgress.emit(0.0)
+
         # 이미지 시퀀스 → 영상(C6): inp가 리스트
         if isinstance(inp, (list, tuple)):
             self._convert_sequence(index, total, list(inp), out, ext)
@@ -65,14 +69,18 @@ class ConversionWorker(QObject):
         # 영상→이미지(C5)는 입력이 영상이므로 아래 ffmpeg 경로로 간다.
         in_ext = Path(inp).suffix.lstrip(".")
         if kind_of(in_ext) == MediaKind.IMAGE:
-            convert_image(inp, out, ext, self._opt)
+            try:
+                convert_image(inp, out, ext, self._opt)
+            except Exception as exc:  # noqa: BLE001
+                raise RuntimeError(friendly_image_error(exc, Path(inp).name)) from exc
+            self.fileProgress.emit(1.0)
             self.progress.emit((index + 1) / total)
             return
 
         full = probe_duration(self._tools.ffprobe, inp)
         seg = segment_duration(full, self._opt)
         cmd = build_command(self._tools.ffmpeg, inp, out, ext, self._opt, seg)
-        self._run_proc(cmd, seg, index, total, Path(out).name)
+        self._run_proc(cmd, seg, index, total, Path(inp).name)
 
     def _convert_sequence(self, index, total, images, out, ext):
         tmp = tempfile.mkdtemp(prefix="fc_seq_")
@@ -91,16 +99,22 @@ class ConversionWorker(QObject):
             text=True, creationflags=_NO_WINDOW,
         )
         assert proc.stdout is not None
+        err_lines: list[str] = []
         for line in proc.stdout:
             if self._cancel:
                 proc.terminate()
                 break
             frac = self._parse_progress(line, seg)
             if frac is not None:
+                self.fileProgress.emit(min(frac, 1.0))
                 self.progress.emit((index + min(frac, 1.0)) / total)
+            elif line.strip() and "=" not in line:
+                # -loglevel error 라서 진행률(key=value)이 아닌 줄은 오류 메시지
+                err_lines.append(line.strip())
         proc.wait()
         if proc.returncode not in (0, None) and not self._cancel:
-            raise RuntimeError(f"ffmpeg 종료 코드 {proc.returncode} ({name})")
+            raise RuntimeError(friendly_ffmpeg_error("\n".join(err_lines[-6:]), name))
+        self.fileProgress.emit(1.0)
 
     @staticmethod
     def _parse_progress(line: str, seg_dur: float | None) -> float | None:

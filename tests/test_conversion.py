@@ -226,6 +226,41 @@ def test_worker_sequence_pipeline(tools, tmp_path, run_worker):
     assert out.exists() and out.stat().st_size > 0
 
 
+# ----- 실패 메시지 한글화 + 현재 파일 진행률 -----
+@pytest.mark.ffmpeg
+@pytest.mark.gui
+def test_worker_friendly_error(tools, tmp_path, run_worker):
+    from core.media import AudioOptions
+    from gui.worker import ConversionWorker
+
+    bad = tmp_path / "bad.mp4"
+    bad.write_bytes(b"this is not a real video file")
+    out = tmp_path / "o.mp3"
+
+    worker = ConversionWorker([(str(bad), str(out), "mp3")], AudioOptions(), tools)
+    res = run_worker(worker)
+    assert res.get("ok") is False
+    msg = res.get("msg", "")
+    assert "bad.mp4" in msg                     # 어떤 파일인지 안내
+    assert "ffmpeg 종료 코드" not in msg        # 기술적 원문이 아님
+
+
+@pytest.mark.ffmpeg
+@pytest.mark.gui
+def test_worker_file_progress(tools, sample_mp4, tmp_path, run_worker):
+    from core.media import AudioOptions
+    from gui.worker import ConversionWorker
+
+    out = tmp_path / "fp.mp3"
+    worker = ConversionWorker([(str(sample_mp4), str(out), "mp3")], AudioOptions(), tools)
+    fprogs = []
+    worker.fileProgress.connect(fprogs.append)
+
+    res = run_worker(worker)
+    assert res.get("ok") is True, res
+    assert fprogs and fprogs[-1] == 1.0         # 현재 파일 100%로 마무리
+
+
 # ----- 예상 크기: 실제 파일 길이 조회 + 추정 -----
 @pytest.mark.ffmpeg
 @pytest.mark.gui

@@ -29,6 +29,7 @@ class Backend(QObject):
     outputKindChanged = Signal()
     inputKindChanged = Signal()
     progressChanged = Signal()
+    fileProgressChanged = Signal()
     statusChanged = Signal()
     busyChanged = Signal()
     estimatedSizeChanged = Signal()
@@ -45,6 +46,7 @@ class Backend(QObject):
         self._categories: list = []
         self._selected_category: MediaKind | None = None
         self._progress: float = 0.0
+        self._file_progress: float = 0.0
         self._status: str = "파일을 끌어다 놓으세요."
         self._busy: bool = False
         self._thread: QThread | None = None
@@ -130,6 +132,10 @@ class Backend(QObject):
     def progress(self):
         return self._progress
 
+    @Property(float, notify=fileProgressChanged)
+    def fileProgress(self):
+        return self._file_progress
+
     @Property(str, notify=statusChanged)
     def status(self):
         return self._status
@@ -146,6 +152,10 @@ class Backend(QObject):
     def _set_progress(self, value: float):
         self._progress = value
         self.progressChanged.emit()
+
+    def _set_file_progress(self, value: float):
+        self._file_progress = value
+        self.fileProgressChanged.emit()
 
     def _set_busy(self, value: bool):
         self._busy = value
@@ -350,6 +360,7 @@ class Backend(QObject):
         self._can_open = False
         self.canOpenOutputChanged.emit()
         self._set_progress(0.0)
+        self._set_file_progress(0.0)
         self._set_busy(True)
 
         self._thread = QThread()
@@ -357,6 +368,7 @@ class Backend(QObject):
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._set_progress)
+        self._worker.fileProgress.connect(self._set_file_progress)
         self._worker.status.connect(self._set_status)
         self._worker.finished.connect(self._on_finished)
         self._thread.start()

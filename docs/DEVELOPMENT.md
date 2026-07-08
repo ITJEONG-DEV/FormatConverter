@@ -322,8 +322,10 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] 출력 폴더 선택 UI(FolderDialog) — 미지정 시 입력과 같은 폴더. `outputDir`/`setOutputDir`/
   `clearOutputDir`, `_dest_for`로 경로 결정(덮어쓰기 방지).
 - [x] 변환 완료 후 [폴더 열기](QDesktopServices) — `canOpenOutput`/`openOutputFolder`.
-- [ ] 개별 파일 진행률 표시(현재 전체 진행률만)
-- [ ] 예외 메시지 한글화(코덱 미지원·손상 파일 등), 앱 아이콘(`assets/app.ico`)
+- [x] 개별 파일 진행률 표시: 워커 `fileProgress` 시그널 + 전체/현재 파일 2단 진행바.
+- [x] 예외 메시지 한글화(`core/errors.py`): ffmpeg stderr·Pillow 예외를 흔한 원인별
+  한글 안내로 매핑(스트림 없음·손상·권한·코덱 미지원·짝수 해상도 등).
+- [ ] 앱 아이콘(`assets/app.ico`·`app.icns`) 제작 후 빌드 반영
 
 ### 알려진 제약 / 메모
 - Python 3.14는 최신 → 일부 패키지 휠 미제공 가능성. 문제 시 3.12/3.13 사용.

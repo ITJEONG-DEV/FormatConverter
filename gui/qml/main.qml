@@ -522,15 +522,23 @@ ApplicationWindow {
 
         Item { Layout.fillHeight: true }
 
-        // ---- 진행률 ----
+        // ---- 진행률 (전체 + 현재 파일) ----
         ProgressBar {
             Layout.fillWidth: true
             from: 0; to: 1
             value: backend.progress
         }
+        ProgressBar {
+            Layout.fillWidth: true
+            visible: backend.busy
+            from: 0; to: 1
+            value: backend.fileProgress
+        }
         Label {
             Layout.fillWidth: true
             text: backend.status
+                  + (backend.busy && backend.fileProgress > 0
+                     ? "  —  현재 " + Math.round(backend.fileProgress * 100) + "%" : "")
             color: "#444"
             elide: Text.ElideRight
         }
