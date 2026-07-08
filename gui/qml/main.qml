@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 ApplicationWindow {
     id: win
@@ -162,6 +163,36 @@ ApplicationWindow {
                 text: advancedOpen ? "고급 옵션 ▲" : "고급 옵션 ▼"
                 onClicked: advancedOpen = !advancedOpen
             }
+        }
+
+        // ---- 저장 위치 ----
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            Label { text: "저장 위치:"; font.pixelSize: 14 }
+            Label {
+                Layout.fillWidth: true
+                text: backend.outputDir !== "" ? backend.outputDir : "입력 파일과 같은 폴더"
+                color: backend.outputDir !== "" ? "#333" : "#999"
+                elide: Text.ElideMiddle
+            }
+            Button {
+                text: "기본"
+                visible: backend.outputDir !== ""
+                enabled: !backend.busy
+                onClicked: backend.clearOutputDir()
+            }
+            Button {
+                text: "폴더 선택"
+                enabled: !backend.busy
+                onClicked: folderDialog.open()
+            }
+        }
+
+        FolderDialog {
+            id: folderDialog
+            title: "저장 폴더 선택"
+            onAccepted: backend.setOutputDir(selectedFolder)
         }
 
         // ---- 고급 옵션 ----
@@ -512,6 +543,11 @@ ApplicationWindow {
                 text: "목록 비우기"
                 enabled: !backend.busy
                 onClicked: backend.clearFiles()
+            }
+            Button {
+                text: "폴더 열기"
+                visible: backend.canOpenOutput && !backend.busy
+                onClicked: backend.openOutputFolder()
             }
             Item { Layout.fillWidth: true }
             Button {

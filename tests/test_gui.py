@@ -296,6 +296,48 @@ def test_backend_update_estimate_reacts_to_bitrate(qapp):
 
 
 @pytest.mark.gui
+def test_backend_output_dir(qapp):
+    from PySide6.QtCore import QUrl
+    from gui.backend import Backend
+
+    b = Backend()
+    assert b.outputDir == ""                     # 기본: 입력과 같은 폴더
+    b.setOutputDir(QUrl.fromLocalFile("C:/out"))
+    assert b.outputDir == "C:/out"
+    b.clearOutputDir()
+    assert b.outputDir == ""
+
+
+@pytest.mark.gui
+def test_dest_for_uses_output_dir(qapp):
+    from pathlib import Path
+    from gui.backend import Backend
+
+    b = Backend()
+    src = Path("C:/videos/clip.mp4")
+    # 저장 폴더 미지정 → 입력과 같은 폴더
+    assert b._dest_for(src, "mp3") == Path("C:/videos/clip.mp3")
+    # 저장 폴더 지정 → 그 폴더에
+    b._output_dir = "D:/out"
+    assert b._dest_for(src, "mp3") == Path("D:/out/clip.mp3")
+    # 같은 폴더+같은 확장자면 덮어쓰기 방지
+    b._output_dir = ""
+    assert b._dest_for(src, "mp4") == Path("C:/videos/clip_converted.mp4")
+
+
+@pytest.mark.gui
+def test_can_open_output_after_finish(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b._last_output_dir = "C:/out"
+    b._on_finished(True, "완료")
+    assert b.canOpenOutput is True
+    b._on_finished(False, "오류")
+    assert b.canOpenOutput is False
+
+
+@pytest.mark.gui
 def test_reorder_preserves_output_selection(qapp):
     from gui.backend import Backend
 

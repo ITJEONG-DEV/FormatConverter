@@ -319,8 +319,10 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [ ] C3 음원→음원 UI 노출 정리(현재 엔진은 지원, 입력 필터만 확장)
 - [x] C4 이미지→이미지 변환(`core/image.py` Pillow 엔진, 품질·해상도 옵션, registry 라우팅,
   워커가 이미지는 ffmpeg 없이 인프로세스 변환, GUI 이미지 옵션 전환)
-- [ ] 출력 폴더 선택 UI(현재는 입력 파일과 같은 폴더에 저장)
-- [ ] 변환 완료 후 폴더 열기 / 개별 파일 진행률 표시
+- [x] 출력 폴더 선택 UI(FolderDialog) — 미지정 시 입력과 같은 폴더. `outputDir`/`setOutputDir`/
+  `clearOutputDir`, `_dest_for`로 경로 결정(덮어쓰기 방지).
+- [x] 변환 완료 후 [폴더 열기](QDesktopServices) — `canOpenOutput`/`openOutputFolder`.
+- [ ] 개별 파일 진행률 표시(현재 전체 진행률만)
 - [ ] 예외 메시지 한글화(코덱 미지원·손상 파일 등), 앱 아이콘(`assets/app.ico`)
 
 ### 알려진 제약 / 메모

@@ -7,6 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import (
     Property, QObject, QThread, QUrl, Signal, Slot,
 )
+from PySide6.QtGui import QDesktopServices
 
 from core.estimate import estimate_output_bytes, format_size
 from core.ffmpeg_tools import FFmpegNotFound, find_tools, probe_duration
@@ -31,6 +32,8 @@ class Backend(QObject):
     statusChanged = Signal()
     busyChanged = Signal()
     estimatedSizeChanged = Signal()
+    outputDirChanged = Signal()
+    canOpenOutputChanged = Signal()
 
     def __init__(self):
         super().__init__()
@@ -49,6 +52,9 @@ class Backend(QObject):
         self._durations: dict[str, float | None] = {}
         self._estimated_size: str = ""
         self._estimate_options: dict = {}
+        self._output_dir: str = ""        # "" = 입력 파일과 같은 폴더
+        self._last_output_dir: str = ""   # 마지막 변환 결과 폴더(열기용)
+        self._can_open: bool = False
 
     # ---------- Properties ----------
     @Property(list, notify=filesChanged)
@@ -70,6 +76,32 @@ class Backend(QObject):
     @Property(str, notify=estimatedSizeChanged)
     def estimatedSize(self):
         return self._estimated_size
+
+    @Property(str, notify=outputDirChanged)
+    def outputDir(self):
+        """저장 폴더 경로. 빈 문자열이면 입력 파일과 같은 폴더."""
+        return self._output_dir
+
+    @Property(bool, notify=canOpenOutputChanged)
+    def canOpenOutput(self):
+        return self._can_open
+
+    @Slot("QUrl")
+    def setOutputDir(self, url):
+        path = url.toLocalFile() if hasattr(url, "toLocalFile") else str(url)
+        if path:
+            self._output_dir = path
+            self.outputDirChanged.emit()
+
+    @Slot()
+    def clearOutputDir(self):
+        self._output_dir = ""
+        self.outputDirChanged.emit()
+
+    @Slot()
+    def openOutputFolder(self):
+        if self._last_output_dir and os.path.isdir(self._last_output_dir):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(self._last_output_dir))
 
     @Property(list, notify=outputFormatsChanged)
     def outputFormats(self):
@@ -306,17 +338,17 @@ class Backend(QObject):
         if in_kind == MediaKind.IMAGE and out_kind == MediaKind.VIDEO:
             # C6: 모든 이미지(추가 순서) → 단일 슬라이드쇼 영상 1개
             first = Path(self._files[0])
-            dst = first.with_name(f"{first.stem}_slideshow.{out_ext}")
+            dst = self._dest_for(first, out_ext, "_slideshow")
             jobs = [([str(Path(f)) for f in self._files], str(dst), out_ext)]
         else:
-            jobs = []
-            for f in self._files:
-                src = Path(f)
-                dst = src.with_name(f"{src.stem}.{out_ext}")
-                if dst == src:
-                    dst = src.with_name(f"{src.stem}_converted.{out_ext}")
-                jobs.append((str(src), str(dst), out_ext))
+            jobs = [
+                (str(Path(f)), str(self._dest_for(Path(f), out_ext)), out_ext)
+                for f in self._files
+            ]
 
+        self._last_output_dir = os.path.dirname(jobs[0][1])
+        self._can_open = False
+        self.canOpenOutputChanged.emit()
         self._set_progress(0.0)
         self._set_busy(True)
 
@@ -335,9 +367,19 @@ class Backend(QObject):
             self._worker.cancel()
 
     # ---------- helpers ----------
+    def _dest_for(self, src: Path, out_ext: str, stem_suffix: str = "") -> Path:
+        """출력 경로 결정. 저장 폴더가 지정돼 있으면 그곳에, 아니면 입력과 같은 폴더."""
+        base = Path(self._output_dir) if self._output_dir else src.parent
+        dst = base / f"{src.stem}{stem_suffix}.{out_ext}"
+        if dst == src:  # 입력을 덮어쓰지 않도록
+            dst = base / f"{src.stem}{stem_suffix}_converted.{out_ext}"
+        return dst
+
     def _on_finished(self, ok: bool, message: str):
         self._set_status(message)
         self._set_busy(False)
+        self._can_open = ok and bool(self._last_output_dir)
+        self.canOpenOutputChanged.emit()
         if self._thread:
             self._thread.quit()
             self._thread.wait()
