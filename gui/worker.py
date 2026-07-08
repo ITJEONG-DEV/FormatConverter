@@ -8,7 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, Slot
 
 from core.ffmpeg_tools import Tools, probe_duration
-from core.media import AudioOptions, build_audio_command, segment_duration
+from core.media import build_command, segment_duration
 
 _NO_WINDOW = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
 
@@ -20,7 +20,7 @@ class ConversionWorker(QObject):
     status = Signal(str)              # 상태 텍스트
     finished = Signal(bool, str)      # (성공여부, 메시지)
 
-    def __init__(self, jobs, options: AudioOptions, tools: Tools):
+    def __init__(self, jobs, options, tools: Tools):
         super().__init__()
         self._jobs = jobs
         self._opt = options
@@ -52,7 +52,7 @@ class ConversionWorker(QObject):
     def _convert_one(self, index, total, inp, out, ext):
         full = probe_duration(self._tools.ffprobe, inp)
         seg = segment_duration(full, self._opt)
-        cmd = build_audio_command(
+        cmd = build_command(
             self._tools.ffmpeg, inp, out, ext, self._opt, seg
         )
         proc = subprocess.Popen(

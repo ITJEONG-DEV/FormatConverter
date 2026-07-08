@@ -19,7 +19,10 @@ ApplicationWindow {
             "volumeDb": volumeSpin.value,
             "normalize": normalizeCheck.checked,
             "trimStart": trimStartField.text,
-            "trimEnd": trimEndField.text
+            "trimEnd": trimEndField.text,
+            "videoResolution": resolutionBox.currentValue,
+            "videoFps": fpsBox.currentValue,
+            "videoQuality": qualityBox.currentValue
         }
     }
 
@@ -63,7 +66,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "영상(mp4 등) → 음원(mp3 등) 변환"
+                    text: "영상 → 영상/음원, 음원 → 음원 변환"
                     font.pixelSize: 12
                     color: "#999"
                 }
@@ -133,10 +136,15 @@ ApplicationWindow {
                     ]
                 }
 
-                Label { text: "샘플레이트" }
+                // ----- 오디오 전용 (음원 출력일 때) -----
+                Label {
+                    text: "샘플레이트"
+                    visible: backend.outputKind !== "video"
+                }
                 ComboBox {
                     id: sampleRateBox
                     Layout.fillWidth: true
+                    visible: backend.outputKind !== "video"
                     textRole: "text"
                     valueRole: "value"
                     model: [
@@ -147,10 +155,14 @@ ApplicationWindow {
                     ]
                 }
 
-                Label { text: "채널" }
+                Label {
+                    text: "채널"
+                    visible: backend.outputKind !== "video"
+                }
                 ComboBox {
                     id: channelsBox
                     Layout.fillWidth: true
+                    visible: backend.outputKind !== "video"
                     textRole: "text"
                     valueRole: "value"
                     model: [
@@ -160,17 +172,80 @@ ApplicationWindow {
                     ]
                 }
 
-                Label { text: "볼륨 (dB)" }
+                Label {
+                    text: "볼륨 (dB)"
+                    visible: backend.outputKind !== "video"
+                }
                 SpinBox {
                     id: volumeSpin
                     Layout.fillWidth: true
+                    visible: backend.outputKind !== "video"
                     from: -30; to: 30; value: 0
                 }
 
-                Label { text: "정규화" }
+                Label {
+                    text: "정규화"
+                    visible: backend.outputKind !== "video"
+                }
                 CheckBox {
                     id: normalizeCheck
+                    visible: backend.outputKind !== "video"
                     text: "볼륨 자동 정규화 (loudnorm)"
+                }
+
+                // ----- 비디오 전용 (영상 출력일 때) -----
+                Label {
+                    text: "해상도"
+                    visible: backend.outputKind === "video"
+                }
+                ComboBox {
+                    id: resolutionBox
+                    Layout.fillWidth: true
+                    visible: backend.outputKind === "video"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "원본 유지", value: "" },
+                        { text: "1080p", value: "1080" },
+                        { text: "720p", value: "720" },
+                        { text: "480p", value: "480" }
+                    ]
+                }
+
+                Label {
+                    text: "프레임레이트"
+                    visible: backend.outputKind === "video"
+                }
+                ComboBox {
+                    id: fpsBox
+                    Layout.fillWidth: true
+                    visible: backend.outputKind === "video"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "원본 유지", value: 0 },
+                        { text: "60 fps", value: 60 },
+                        { text: "30 fps", value: 30 },
+                        { text: "24 fps", value: 24 }
+                    ]
+                }
+
+                Label {
+                    text: "화질"
+                    visible: backend.outputKind === "video"
+                }
+                ComboBox {
+                    id: qualityBox
+                    Layout.fillWidth: true
+                    visible: backend.outputKind === "video"
+                    textRole: "text"
+                    valueRole: "value"
+                    model: [
+                        { text: "자동", value: 0 },
+                        { text: "높은 화질 (CRF 18)", value: 18 },
+                        { text: "보통 (CRF 23)", value: 23 },
+                        { text: "작은 용량 (CRF 28)", value: 28 }
+                    ]
                 }
 
                 Label { text: "구간 자르기 (초)" }

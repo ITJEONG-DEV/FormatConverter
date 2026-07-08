@@ -76,7 +76,38 @@ def test_backend_output_formats(qapp):
 
     b = Backend()
     b.addUrls(["file:///C:/a/movie.mp4"])
-    assert "mp3" in b.outputFormats
+    assert "mp3" in b.outputFormats      # 음원 출력(C2)
+    assert "mkv" in b.outputFormats      # 영상 출력(C1)
+
+
+@pytest.mark.gui
+def test_backend_output_kind(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/a/movie.mp4"])
+    assert b.outputKind == "video"       # 기본 출력이 영상(mkv)
+    b.setOutputFormat("mp3")
+    assert b.outputKind == "audio"
+    b.setOutputFormat("webm")
+    assert b.outputKind == "video"
+
+
+@pytest.mark.gui
+def test_backend_build_video_options(qapp):
+    from core.registry import MediaKind
+    from gui.backend import Backend
+
+    opt = Backend._build_options(
+        {"videoResolution": "720", "videoFps": 30, "videoQuality": 23,
+         "bitrate": "192k", "trimStart": "5", "trimEnd": "10"},
+        MediaKind.VIDEO,
+    )
+    assert opt.resolution == "720"
+    assert opt.fps == 30
+    assert opt.crf == 23
+    assert opt.audio_bitrate == "192k"
+    assert opt.trim_start == 5.0
 
 
 @pytest.mark.gui

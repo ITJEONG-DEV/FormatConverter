@@ -1,10 +1,13 @@
-"""FFmpeg 기반 오디오 변환(영상→음원 C2, 음원→음원 C3) 명령 생성.
+"""FFmpeg 기반 변환 명령 생성.
 
-docs/DESIGN.md §9 (mp4→mp3 고급 옵션)에 대응한다.
+- 오디오: 영상→음원(C2), 음원→음원(C3)  (docs/DESIGN.md §9)
+- 비디오: 영상→영상(C1)                  (docs/DESIGN.md §8)
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
+
+from core.registry import MediaKind, kind_of
 
 # 출력 확장자 -> (코덱, 손실압축 여부)
 AUDIO_CODECS: dict[str, tuple[str, bool]] = {
@@ -107,3 +110,109 @@ def build_audio_command(
 
     args += [output_path]
     return args
+
+
+# ---------------------------------------------------------------------------
+# 비디오 (C1: 영상 → 영상)
+# ---------------------------------------------------------------------------
+
+# 출력 컨테이너 -> (기본 비디오 코덱, 기본 오디오 코덱)
+VIDEO_CODECS: dict[str, tuple[str, str]] = {
+    "mp4": ("libx264", "aac"),
+    "mkv": ("libx264", "aac"),
+    "mov": ("libx264", "aac"),
+    "m4v": ("libx264", "aac"),
+    "webm": ("libvpx-vp9", "libopus"),
+    "avi": ("mpeg4", "libmp3lame"),
+    "wmv": ("wmv2", "wmav2"),
+    "flv": ("libx264", "aac"),
+    "mpeg": ("mpeg2video", "mp2"),
+    "ts": ("libx264", "aac"),
+    "3gp": ("libx264", "aac"),
+}
+
+
+@dataclass
+class VideoOptions:
+    """영상→영상 변환 옵션. None/0 이면 '원본 유지' 또는 미적용."""
+    video_codec: str | None = None    # None=컨테이너 기본
+    crf: int | None = None            # 품질(낮을수록 고화질). x264/x265/vp9
+    video_bitrate: str | None = None  # crf 대신 목표 비트레이트(예: "4M")
+    resolution: str | None = None     # "720"(높이) 또는 "1280x720". None=원본
+    fps: int | None = None            # None=원본
+    audio_codec: str | None = None    # None=컨테이너 기본
+    audio_bitrate: str | None = "192k"
+    trim_start: float | None = None
+    trim_end: float | None = None
+
+
+def _scale_filter(resolution: str | None) -> str | None:
+    """resolution 문자열을 ffmpeg scale 필터로 변환.
+
+    "720" -> scale=-2:720 (가로는 비율 유지, 2의 배수)
+    "1280x720" -> scale=1280:720
+    """
+    if not resolution:
+        return None
+    res = resolution.strip().lower()
+    if "x" in res:
+        w, _, h = res.partition("x")
+        return f"scale={w}:{h}"
+    return f"scale=-2:{res}"
+
+
+def build_video_command(
+    ffmpeg: str,
+    input_path: str,
+    output_path: str,
+    out_ext: str,
+    opt: VideoOptions,
+    seg_dur: float | None = None,
+) -> list[str]:
+    vcodec, acodec = VIDEO_CODECS.get(out_ext.lower(), ("libx264", "aac"))
+
+    args = [ffmpeg, "-y", "-hide_banner", "-loglevel", "error"]
+
+    if opt.trim_start:
+        args += ["-ss", str(opt.trim_start)]
+    if opt.trim_end is not None:
+        args += ["-to", str(opt.trim_end)]
+
+    args += ["-i", input_path]
+
+    # 비디오
+    args += ["-c:v", opt.video_codec or vcodec]
+    if opt.crf is not None:
+        args += ["-crf", str(opt.crf)]
+    elif opt.video_bitrate:
+        args += ["-b:v", opt.video_bitrate]
+
+    vf = _scale_filter(opt.resolution)
+    if vf:
+        args += ["-vf", vf]
+    if opt.fps:
+        args += ["-r", str(opt.fps)]
+
+    # 오디오 (영상의 오디오 트랙 재인코딩)
+    args += ["-c:a", opt.audio_codec or acodec]
+    if opt.audio_bitrate:
+        args += ["-b:a", opt.audio_bitrate]
+
+    args += ["-progress", "pipe:1", "-nostats"]
+    args += [output_path]
+    return args
+
+
+# ---------------------------------------------------------------------------
+def build_command(
+    ffmpeg: str,
+    input_path: str,
+    output_path: str,
+    out_ext: str,
+    opt,
+    seg_dur: float | None = None,
+) -> list[str]:
+    """출력 종류에 따라 오디오/비디오 명령 생성으로 라우팅."""
+    if kind_of(out_ext) == MediaKind.VIDEO:
+        return build_video_command(ffmpeg, input_path, output_path, out_ext, opt, seg_dur)
+    return build_audio_command(ffmpeg, input_path, output_path, out_ext, opt, seg_dur)

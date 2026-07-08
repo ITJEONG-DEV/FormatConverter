@@ -8,14 +8,15 @@ from PySide6.QtCore import (
 )
 
 from core.ffmpeg_tools import FFmpegNotFound, find_tools
-from core.media import AudioOptions
-from core.registry import is_supported_input, output_formats_for
+from core.media import AudioOptions, VideoOptions
+from core.registry import MediaKind, is_supported_input, kind_of, output_formats_for
 from gui.worker import ConversionWorker
 
 
 class Backend(QObject):
     filesChanged = Signal()
     outputFormatsChanged = Signal()
+    outputKindChanged = Signal()
     progressChanged = Signal()
     statusChanged = Signal()
     busyChanged = Signal()
@@ -25,6 +26,7 @@ class Backend(QObject):
         self._files: list[str] = []
         self._output_formats: list[str] = []
         self._output_format: str = ""
+        self._output_kind: str = ""
         self._progress: float = 0.0
         self._status: str = "파일을 끌어다 놓으세요."
         self._busy: bool = False
@@ -39,6 +41,11 @@ class Backend(QObject):
     @Property(list, notify=outputFormatsChanged)
     def outputFormats(self):
         return self._output_formats
+
+    @Property(str, notify=outputKindChanged)
+    def outputKind(self):
+        """현재 선택된 출력 포맷의 종류: 'video' / 'audio' / ''."""
+        return self._output_kind
 
     @Property(float, notify=progressChanged)
     def progress(self):
@@ -65,15 +72,22 @@ class Backend(QObject):
         self._busy = value
         self.busyChanged.emit()
 
+    def _set_output_kind(self):
+        k = kind_of(self._output_format) if self._output_format else None
+        self._output_kind = k.value if k else ""
+        self.outputKindChanged.emit()
+
     def _refresh_output_formats(self):
         if not self._files:
             self._output_formats = []
+            self._output_format = ""
         else:
             first_ext = Path(self._files[0]).suffix.lstrip(".")
             self._output_formats = output_formats_for(first_ext)
         if self._output_formats:
             self._output_format = self._output_formats[0]
         self.outputFormatsChanged.emit()
+        self._set_output_kind()
 
     # ---------- Slots ----------
     @Slot(list)
@@ -107,6 +121,7 @@ class Backend(QObject):
     @Slot(str)
     def setOutputFormat(self, fmt: str):
         self._output_format = fmt
+        self._set_output_kind()
 
     @Slot("QVariantMap")
     def start(self, options):
@@ -124,7 +139,7 @@ class Backend(QObject):
         out_ext = self._output_format or (
             self._output_formats[0] if self._output_formats else "mp3"
         )
-        opt = self._build_options(options)
+        opt = self._build_options(options, kind_of(out_ext))
 
         jobs = []
         for f in self._files:
@@ -162,7 +177,7 @@ class Backend(QObject):
         self._worker = None
 
     @staticmethod
-    def _build_options(o) -> AudioOptions:
+    def _build_options(o, kind=None):
         def num(key, cast, default=None):
             v = o.get(key)
             if v in (None, "", 0, "0"):
@@ -171,6 +186,16 @@ class Backend(QObject):
                 return cast(v)
             except (ValueError, TypeError):
                 return default
+
+        if kind == MediaKind.VIDEO:
+            return VideoOptions(
+                crf=num("videoQuality", int),
+                resolution=(o.get("videoResolution") or None),
+                fps=num("videoFps", int),
+                audio_bitrate=(o.get("bitrate") or None),
+                trim_start=num("trimStart", float),
+                trim_end=num("trimEnd", float),
+            )
 
         return AudioOptions(
             bitrate=(o.get("bitrate") or None),

@@ -25,7 +25,7 @@
 | 7 | 여러 파일 일괄 변환 + 취소 | ✅ 구현 |
 | 8 | 배포용 단독 실행 exe (full/lite 2종) | ✅ 구현 (`build.py`) |
 | 9 | 버전 태그 기반 GitHub Release 자동 배포 | ✅ 구현 (GitHub Actions) |
-| 10 | 영상 → 영상 변환 (C1) | ⏳ 2차 |
+| 10 | 영상 → 영상 변환 (C1) | ✅ 구현 |
 | 11 | 이미지 → 이미지 변환 (C4, Pillow) | ⏳ 2차 |
 | 12 | 영상 ↔ 이미지 (C5/C6), 문서 변환 | ⏳ 이후 |
 
@@ -292,7 +292,8 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [ ] **배포 용량 축소**: PySide6 불필요 Qt 모듈 exclude(`--exclude-module`)로 824MB 감량
 - [ ] macOS Intel(x86_64) 빌드 또는 universal2 지원 검토
 - [ ] (선택) Apple Developer 계정 확보 후 mac 서명·공증 + .dmg 배포
-- [ ] C1 영상→영상 변환 엔진 추가 (`media.py`에 VideoOptions/명령 생성, ROUTES 확장)
+- [x] C1 영상→영상 변환(`VideoOptions`/`build_video_command`/`build_command` 라우팅,
+  해상도·fps·CRF·비트레이트 옵션, GUI가 출력 종류에 따라 오디오/비디오 옵션 전환)
 - [ ] C3 음원→음원 UI 노출 정리(현재 엔진은 지원, 입력 필터만 확장)
 - [ ] C4 이미지→이미지 변환(`core/image.py` Pillow 엔진) + registry 라우팅
 - [ ] 출력 폴더 선택 UI(현재는 입력 파일과 같은 폴더에 저장)

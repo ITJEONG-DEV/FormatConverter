@@ -48,10 +48,11 @@ ALL_ROUTES = {
     (MediaKind.IMAGE, MediaKind.IMAGE),   # C4
 }
 
-# 1차 릴리즈에서 실제 구현된 경로 (mp4->mp3 중심)
+# 실제 구현된 경로
 IMPLEMENTED_ROUTES = {
-    (MediaKind.VIDEO, MediaKind.AUDIO),   # C2 ★
-    (MediaKind.AUDIO, MediaKind.AUDIO),   # C3 (동일 엔진으로 무료 지원)
+    (MediaKind.VIDEO, MediaKind.VIDEO),   # C1 (영상→영상)
+    (MediaKind.VIDEO, MediaKind.AUDIO),   # C2 ★ (영상→음원)
+    (MediaKind.AUDIO, MediaKind.AUDIO),   # C3 (음원→음원)
 }
 
 
@@ -68,15 +69,33 @@ def is_supported_input(ext: str) -> bool:
     return any(src == kind for src, _dst in IMPLEMENTED_ROUTES)
 
 
+# 흔한 포맷을 앞에 오도록 하는 정렬 우선순위(작을수록 먼저).
+_PRIORITY = {
+    # audio
+    "mp3": 0, "aac": 1, "m4a": 2, "wav": 3, "flac": 4,
+    "ogg": 5, "opus": 6, "aiff": 7, "wma": 8,
+    # video
+    "mp4": 0, "mkv": 1, "mov": 2, "webm": 3, "avi": 4, "m4v": 5,
+    "flv": 6, "mpeg": 7, "ts": 8, "3gp": 9, "wmv": 10,
+}
+
+
 def output_formats_for(input_ext: str) -> list[str]:
-    """입력 확장자에 대해 현재 구현된 출력 포맷 목록."""
+    """입력 확장자에 대해 현재 구현된 출력 포맷 목록.
+
+    정렬: (1) 입력과 같은 종류를 먼저(영상→영상 우선), (2) 흔한 포맷 우선,
+    (3) 입력과 동일한 확장자는 뒤로(예: mp4 입력의 기본 출력이 mp4→mp4가 되지 않게).
+    """
+    input_ext = input_ext.lower().lstrip(".")
     kind = kind_of(input_ext)
     if kind is None:
         return []
     dst_kinds = {dst for src, dst in IMPLEMENTED_ROUTES if src == kind}
-    outs = [
-        f.ext
-        for f in FORMATS.values()
-        if f.kind in dst_kinds and f.can_output
-    ]
-    return sorted(outs)
+    outs = [f for f in FORMATS.values() if f.kind in dst_kinds and f.can_output]
+    outs.sort(key=lambda f: (
+        0 if f.kind == kind else 1,      # 같은 종류 먼저
+        f.ext == input_ext,              # 동일 확장자는 뒤로
+        _PRIORITY.get(f.ext, 99),        # 흔한 포맷 우선
+        f.ext,
+    ))
+    return [f.ext for f in outs]

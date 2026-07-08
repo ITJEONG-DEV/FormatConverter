@@ -7,7 +7,9 @@ import subprocess
 
 import pytest
 
-from core.media import AudioOptions, build_audio_command, segment_duration
+from core.media import (
+    AudioOptions, VideoOptions, build_audio_command, build_command, segment_duration,
+)
 
 
 @pytest.mark.ffmpeg
@@ -76,3 +78,49 @@ def test_worker_pipeline_multi(tools, sample_mp4, tmp_path, run_worker):
     assert res.get("ok") is True, res
     for i in range(2):
         assert (tmp_path / f"{i}.mp3").exists()
+
+
+# ----- C1: 영상 → 영상 -----
+def _video_codec(ffprobe, path):
+    out = subprocess.run(
+        [ffprobe, "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=codec_name", "-of", "default=nk=1:nw=1", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    return out.stdout.strip()
+
+
+@pytest.mark.ffmpeg
+def test_video_conversion_mp4_to_mkv(tools, sample_mp4, tmp_path):
+    out = tmp_path / "o.mkv"
+    cmd = build_command(tools.ffmpeg, str(sample_mp4), str(out), "mkv", VideoOptions(), 3.0)
+    subprocess.run(cmd, check=True, capture_output=True)
+    assert out.exists() and out.stat().st_size > 0
+    assert _video_codec(tools.ffprobe, out) == "h264"
+
+
+@pytest.mark.ffmpeg
+def test_video_conversion_resize(tools, sample_mp4, tmp_path):
+    out = tmp_path / "r.mp4"
+    opt = VideoOptions(resolution="120", crf=28)
+    cmd = build_command(tools.ffmpeg, str(sample_mp4), str(out), "mp4", opt, 3.0)
+    subprocess.run(cmd, check=True, capture_output=True)
+    # 세로 해상도가 120으로 축소됐는지 확인
+    info = subprocess.run(
+        [tools.ffprobe, "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=height", "-of", "default=nk=1:nw=1", str(out)],
+        capture_output=True, text=True, check=True,
+    )
+    assert info.stdout.strip() == "120"
+
+
+@pytest.mark.ffmpeg
+@pytest.mark.gui
+def test_worker_video_pipeline(tools, sample_mp4, tmp_path, run_worker):
+    from gui.worker import ConversionWorker
+
+    out = tmp_path / "w.mkv"
+    worker = ConversionWorker([(str(sample_mp4), str(out), "mkv")], VideoOptions(), tools)
+    res = run_worker(worker)
+    assert res.get("ok") is True, res
+    assert out.exists()

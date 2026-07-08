@@ -10,7 +10,7 @@ def test_kind_of():
 
 
 def test_is_supported_input():
-    assert is_supported_input("mp4")              # 영상 → 음원 (구현됨)
+    assert is_supported_input("mp4")              # 영상 → 영상/음원 (구현됨)
     assert is_supported_input("wav")              # 음원 → 음원 (구현됨)
     assert not is_supported_input("png")          # 이미지 출력 미구현
     assert not is_supported_input("txt")          # 미지원 확장자
@@ -18,12 +18,19 @@ def test_is_supported_input():
 
 def test_output_formats_for_video():
     outs = output_formats_for("mp4")
-    assert "mp3" in outs and "aac" in outs and "wav" in outs
-    assert outs == sorted(outs)                   # 정렬 보장
+    # 영상 출력(C1) + 음원 출력(C2) 모두 제공
+    assert "mkv" in outs and "webm" in outs       # 영상→영상
+    assert "mp3" in outs and "aac" in outs        # 영상→음원
+    # 영상 입력이므로 영상 포맷이 먼저, 동일 확장자(mp4)는 기본값이 아님
+    assert outs[0] == "mkv"
+    assert outs.index("mkv") < outs.index("mp3")  # 같은 종류(영상) 먼저
 
 
 def test_output_formats_for_audio():
-    assert "mp3" in output_formats_for("wav")
+    outs = output_formats_for("wav")
+    assert "mp3" in outs
+    assert outs[0] == "mp3"                        # 흔한 포맷 우선, 동일 확장자(wav)는 뒤로
+    assert "mkv" not in outs                       # 음원 입력 → 영상 출력 없음
 
 
 def test_output_formats_for_unsupported():

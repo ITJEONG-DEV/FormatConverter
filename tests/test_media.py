@@ -76,3 +76,64 @@ def test_segment_duration():
     assert segment_duration(120, AudioOptions(trim_start=30, trim_end=90)) == 60
     assert segment_duration(120, AudioOptions()) == 120
     assert segment_duration(None, AudioOptions()) is None
+
+
+# ----- 비디오(C1) -----
+from core.media import VideoOptions, build_video_command, build_command, _scale_filter
+
+
+def vbuild(ext="mp4", seg=None, **kw):
+    return build_video_command("ffmpeg", "in.mp4", f"out.{ext}", ext, VideoOptions(**kw), seg)
+
+
+@pytest.mark.parametrize(
+    "ext,vcodec,acodec",
+    [
+        ("mp4", "libx264", "aac"),
+        ("mkv", "libx264", "aac"),
+        ("webm", "libvpx-vp9", "libopus"),
+        ("avi", "mpeg4", "libmp3lame"),
+    ],
+)
+def test_video_codec_selection(ext, vcodec, acodec):
+    c = vbuild(ext=ext)
+    assert c[c.index("-c:v") + 1] == vcodec
+    assert c[c.index("-c:a") + 1] == acodec
+
+
+def test_scale_filter():
+    assert _scale_filter("720") == "scale=-2:720"
+    assert _scale_filter("1280x720") == "scale=1280:720"
+    assert _scale_filter("") is None
+    assert _scale_filter(None) is None
+
+
+def test_video_resolution_and_fps():
+    c = vbuild(resolution="720", fps=30)
+    assert c[c.index("-vf") + 1] == "scale=-2:720"
+    assert c[c.index("-r") + 1] == "30"
+
+
+def test_video_crf_vs_bitrate():
+    assert "-crf" in vbuild(crf=18)
+    c = vbuild(video_bitrate="4M")
+    assert "-crf" not in c
+    assert c[c.index("-b:v") + 1] == "4M"
+
+
+def test_video_trim_before_input():
+    c = vbuild(trim_start=5, trim_end=10)
+    i = c.index("-i")
+    assert c.index("-ss") < i and c.index("-to") < i
+
+
+def test_video_audio_bitrate():
+    assert vbuild(audio_bitrate="128k")[vbuild(audio_bitrate="128k").index("-b:a") + 1] == "128k"
+
+
+def test_build_command_routes_by_kind():
+    # 비디오 출력 → -c:v 포함, 오디오 출력 → -vn 포함
+    vc = build_command("ffmpeg", "in.mp4", "out.mkv", "mkv", VideoOptions())
+    assert "-c:v" in vc and "-vn" not in vc
+    ac = build_command("ffmpeg", "in.mp4", "out.mp3", "mp3", AudioOptions())
+    assert "-vn" in ac and "-c:v" not in ac
