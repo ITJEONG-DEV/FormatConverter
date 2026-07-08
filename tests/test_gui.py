@@ -216,6 +216,49 @@ def test_backend_remove(qapp):
 
 
 @pytest.mark.gui
+def test_backend_file_infos_size(qapp, tmp_path):
+    from gui.backend import Backend
+
+    f1 = tmp_path / "a.mp3"
+    f1.write_bytes(b"x" * 2048)
+    b = Backend()
+    b._files = [str(f1)]                 # 프로브 스레드 없이 프로퍼티만 검증
+    infos = b.fileInfos
+    assert infos[0]["name"] == "a.mp3"
+    assert infos[0]["size"] == "2.0 KB"
+
+
+@pytest.mark.gui
+def test_backend_estimate_audio(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b._files = ["/x/a.mp3"]
+    b._output_format = "mp3"
+    b._durations = {"/x/a.mp3": 60.0}
+    b._estimate_options = {"bitrate": "192k"}
+    b._recompute_estimate()
+    assert "1.4 MB" in b.estimatedSize   # 192k*60/8 = 1,440,000 B
+
+    # 비오디오 출력은 추정 안 함 → 빈 문자열
+    b._output_format = "mkv"
+    b._recompute_estimate()
+    assert b.estimatedSize == ""
+
+
+@pytest.mark.gui
+def test_backend_update_estimate_reacts_to_bitrate(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b._files = ["/x/a.mp3"]
+    b._output_format = "mp3"
+    b._durations = {"/x/a.mp3": 30.0}
+    b.updateEstimate({"bitrate": "320k"})   # 320k*30/8 = 1,200,000 B ≈ 1.1 MB
+    assert "1.1 MB" in b.estimatedSize
+
+
+@pytest.mark.gui
 def test_reorder_preserves_output_selection(qapp):
     from gui.backend import Backend
 

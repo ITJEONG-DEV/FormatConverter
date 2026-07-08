@@ -88,13 +88,14 @@ ApplicationWindow {
                 id: fileList
                 anchors.fill: parent
                 clip: true
-                model: backend.files
+                model: backend.fileInfos
                 delegate: RowLayout {
                     width: fileList.width
                     spacing: 2
                     Label {
                         Layout.fillWidth: true
-                        text: (index + 1) + ". " + modelData
+                        text: (index + 1) + ". " + modelData.name
+                              + (modelData.size ? "  (" + modelData.size + ")" : "")
                         elide: Text.ElideMiddle
                         padding: 4
                     }
@@ -107,7 +108,7 @@ ApplicationWindow {
                     ToolButton {
                         text: "▼"
                         implicitWidth: 30
-                        enabled: index < backend.files.length - 1 && !backend.busy
+                        enabled: index < backend.fileInfos.length - 1 && !backend.busy
                         onClicked: backend.moveDown(index)
                     }
                     ToolButton {
@@ -129,10 +130,24 @@ ApplicationWindow {
                 id: outputBox
                 Layout.preferredWidth: 140
                 model: backend.outputFormats
-                onActivated: backend.setOutputFormat(currentText)
-                onModelChanged: if (count > 0) backend.setOutputFormat(currentText)
+                onActivated: {
+                    backend.setOutputFormat(currentText)
+                    backend.updateEstimate(win.collectOptions())
+                }
+                onModelChanged: if (count > 0) {
+                    backend.setOutputFormat(currentText)
+                    backend.updateEstimate(win.collectOptions())
+                }
             }
-            Item { Layout.fillWidth: true }
+            Label {
+                id: estimateLabel
+                Layout.fillWidth: true
+                text: backend.estimatedSize
+                visible: backend.estimatedSize !== ""
+                color: "#2a7"
+                font.pixelSize: 12
+                elide: Text.ElideRight
+            }
             Button {
                 text: advancedOpen ? "고급 옵션 ▲" : "고급 옵션 ▼"
                 onClicked: advancedOpen = !advancedOpen
@@ -167,6 +182,7 @@ ApplicationWindow {
                         { text: "256 kbps", value: "256k" },
                         { text: "320 kbps", value: "320k" }
                     ]
+                    onActivated: backend.updateEstimate(win.collectOptions())
                 }
 
                 // ----- 오디오 전용 (음원 출력일 때) -----
@@ -186,6 +202,7 @@ ApplicationWindow {
                         { text: "48000 Hz", value: 48000 },
                         { text: "22050 Hz", value: 22050 }
                     ]
+                    onActivated: backend.updateEstimate(win.collectOptions())
                 }
 
                 Label {
@@ -203,6 +220,7 @@ ApplicationWindow {
                         { text: "스테레오", value: 2 },
                         { text: "모노", value: 1 }
                     ]
+                    onActivated: backend.updateEstimate(win.collectOptions())
                 }
 
                 Label {

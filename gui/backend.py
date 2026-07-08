@@ -1,13 +1,15 @@
 """QML <-> Python 브리지. 파일 목록, 옵션, 변환 실행을 담당한다."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from PySide6.QtCore import (
     Property, QObject, QThread, QUrl, Signal, Slot,
 )
 
-from core.ffmpeg_tools import FFmpegNotFound, find_tools
+from core.estimate import estimate_output_bytes, format_size
+from core.ffmpeg_tools import FFmpegNotFound, find_tools, probe_duration
 from core.image import ImageOptions
 from core.media import (
     AudioOptions, VideoOptions, VideoSequenceOptions, VideoToImageOptions,
@@ -24,6 +26,7 @@ class Backend(QObject):
     progressChanged = Signal()
     statusChanged = Signal()
     busyChanged = Signal()
+    estimatedSizeChanged = Signal()
 
     def __init__(self):
         super().__init__()
@@ -37,11 +40,30 @@ class Backend(QObject):
         self._busy: bool = False
         self._thread: QThread | None = None
         self._worker: ConversionWorker | None = None
+        self._durations: dict[str, float | None] = {}
+        self._estimated_size: str = ""
+        self._estimate_options: dict = {}
 
     # ---------- Properties ----------
     @Property(list, notify=filesChanged)
     def files(self):
         return [Path(f).name for f in self._files]
+
+    @Property(list, notify=filesChanged)
+    def fileInfos(self):
+        """파일별 {name, size} — 목록 표시용(크기 포함)."""
+        infos = []
+        for f in self._files:
+            try:
+                size = os.path.getsize(f)
+            except OSError:
+                size = None
+            infos.append({"name": Path(f).name, "size": format_size(size)})
+        return infos
+
+    @Property(str, notify=estimatedSizeChanged)
+    def estimatedSize(self):
+        return self._estimated_size
 
     @Property(list, notify=outputFormatsChanged)
     def outputFormats(self):
@@ -113,6 +135,42 @@ class Backend(QObject):
         self._set_input_kind()
         self.outputFormatsChanged.emit()
         self._set_output_kind()
+        self._recompute_estimate()
+
+    # ---------- 예상 크기 ----------
+    def _recompute_estimate(self):
+        est = None
+        if self._files and self._output_format:
+            durs = [self._durations.get(f) for f in self._files]
+            est = estimate_output_bytes(self._output_format, self._estimate_options, durs)
+        self._estimated_size = f"예상 출력 크기 ≈ {format_size(est)}" if est else ""
+        self.estimatedSizeChanged.emit()
+
+    def _probe_missing(self):
+        """존재하는 입력 파일의 길이를 조회(캐시). ffprobe 헤더 읽기라 빠르다.
+
+        존재하지 않는 경로(테스트 더미 등)는 건너뛰어 불필요한 subprocess를 피한다.
+        """
+        missing = [
+            f for f in self._files
+            if f not in self._durations and os.path.exists(f)
+        ]
+        if not missing:
+            return
+        try:
+            tools = find_tools()
+        except FFmpegNotFound:
+            return
+        if not tools.ffprobe:
+            return
+        for f in missing:
+            self._durations[f] = probe_duration(tools.ffprobe, f)
+        self._recompute_estimate()
+
+    @Slot("QVariantMap")
+    def updateEstimate(self, options):
+        self._estimate_options = dict(options)
+        self._recompute_estimate()
 
     # ---------- Slots ----------
     @Slot(list)
@@ -131,6 +189,7 @@ class Backend(QObject):
         if added:
             self.filesChanged.emit()
             self._refresh_output_formats()
+            self._probe_missing()
             self._set_status(f"{len(self._files)}개 파일 준비됨.")
         elif not self._files:
             self._set_status("지원하지 않는 파일이거나 추가된 파일이 없습니다.")
@@ -138,6 +197,7 @@ class Backend(QObject):
     @Slot()
     def clearFiles(self):
         self._files.clear()
+        self._durations.clear()
         self.filesChanged.emit()
         self._refresh_output_formats()
         self._set_progress(0.0)
@@ -177,6 +237,7 @@ class Backend(QObject):
     def setOutputFormat(self, fmt: str):
         self._output_format = fmt
         self._set_output_kind()
+        self._recompute_estimate()
 
     @Slot("QVariantMap")
     def start(self, options):

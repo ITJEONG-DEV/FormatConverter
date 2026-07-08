@@ -226,6 +226,21 @@ def test_worker_sequence_pipeline(tools, tmp_path, run_worker):
     assert out.exists() and out.stat().st_size > 0
 
 
+# ----- 예상 크기: 실제 파일 길이 조회 + 추정 -----
+@pytest.mark.ffmpeg
+@pytest.mark.gui
+def test_backend_estimate_with_real_file(qapp, sample_mp4):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls([sample_mp4.as_uri()])         # 실제 3초 mp4 → 길이 동기 조회
+    b.setOutputFormat("mp3")
+    b.updateEstimate({"bitrate": "192k"})
+    # 192k * ~3s / 8 ≈ 72KB → "KB" 단위 예상 크기 표시
+    assert b.estimatedSize.startswith("예상 출력 크기")
+    assert "KB" in b.estimatedSize
+
+
 # ----- C4: 이미지 → 이미지 (ffmpeg 불필요, tools=None) -----
 @pytest.mark.gui
 def test_worker_image_pipeline(qapp, tmp_path, run_worker):

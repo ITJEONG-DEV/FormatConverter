@@ -81,8 +81,9 @@ def probe_duration(ffprobe: str, path: str) -> float | None:
                 path,
             ],
             capture_output=True, text=True, creationflags=_NO_WINDOW,
+            timeout=15,
         )
         value = out.stdout.strip()
         return float(value) if value else None
-    except (ValueError, OSError):
+    except (ValueError, OSError, subprocess.SubprocessError):
         return None
