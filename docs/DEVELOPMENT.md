@@ -29,7 +29,7 @@
 | 11 | 이미지 → 이미지 변환 (C4, Pillow) | ✅ 구현 |
 | 12 | 영상 → 이미지 (C5: gif/프레임) | ✅ 구현 |
 | 13 | 이미지 시퀀스 → 영상 (C6) | ✅ 구현 |
-| 14 | 문서 변환 (pdf 등) | ⏳ 이후 |
+| 14 | 문서 변환 (C7, LibreOffice) | ✅ 구현 |
 
 ---
 
@@ -325,7 +325,12 @@ git push origin v1.0.0     # -> Actions가 자동 빌드 & Release 발행
 - [x] 개별 파일 진행률 표시: 워커 `fileProgress` 시그널 + 전체/현재 파일 2단 진행바.
 - [x] 예외 메시지 한글화(`core/errors.py`): ffmpeg stderr·Pillow 예외를 흔한 원인별
   한글 안내로 매핑(스트림 없음·손상·권한·코덱 미지원·짝수 해상도 등).
+- [x] C7 문서→문서 변환(`core/document.py`, LibreOffice headless): soffice 탐색(PATH/설치경로),
+  `--convert-to`로 변환, 임시 프로필로 인스턴스 충돌 회피, 출력명 보정. 문서 카테고리 추가.
+  (제약: registry가 종류 기반이라 docx→xlsx 등 비현실적 조합도 목록엔 노출 — 실패 시 안내.
+  LibreOffice 미설치 시 변환 시작에서 안내 메시지.)
 - [ ] 앱 아이콘(`assets/app.ico`·`app.icns`) 제작 후 빌드 반영
+- [ ] (문서) 종류 내 비현실 조합 필터 / 문서 카테고리 세분(오피스↔pdf 위주)
 
 ### 알려진 제약 / 메모
 - Python 3.14는 최신 → 일부 패키지 휠 미제공 가능성. 문제 시 3.12/3.13 사용.

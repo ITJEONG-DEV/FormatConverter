@@ -31,7 +31,8 @@
 
 ## 요구 사항
 - Python 3.11 이상
-- [FFmpeg](https://ffmpeg.org/) (실행 파일을 `bin/`에 두거나 시스템 PATH에 등록)
+- [FFmpeg](https://ffmpeg.org/) (실행 파일을 `bin/`에 두거나 시스템 PATH에 등록) — 영상·음원 변환
+- (선택) [LibreOffice](https://www.libreoffice.org/) — 문서 변환(pdf/docx/xlsx 등) 시에만 필요
 
 ## 설치 및 실행
 ```powershell

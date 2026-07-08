@@ -9,6 +9,7 @@ from PySide6.QtCore import (
 )
 from PySide6.QtGui import QDesktopServices
 
+from core.document import SofficeNotFound, find_soffice
 from core.estimate import estimate_output_bytes, format_size
 from core.ffmpeg_tools import FFmpegNotFound, find_tools, probe_duration
 from core.image import ImageOptions
@@ -332,11 +333,16 @@ class Backend(QObject):
         out_kind = kind_of(out_ext)
         in_kind = kind_of(Path(self._files[0]).suffix.lstrip("."))
 
-        # 이미지→이미지(C4, Pillow)만 ffmpeg 불필요. 그 외는 모두 ffmpeg 필요
-        # (영상·음원 입력, 영상→이미지 C5, 이미지 시퀀스→영상 C6).
-        pillow_only = in_kind == MediaKind.IMAGE and out_kind == MediaKind.IMAGE
+        # 엔진 선택: 문서=LibreOffice, 이미지→이미지=Pillow(엔진 불필요), 그 외=ffmpeg.
         tools = None
-        if not pillow_only:
+        soffice = None
+        if in_kind == MediaKind.DOCUMENT:
+            try:
+                soffice = find_soffice()
+            except SofficeNotFound as exc:
+                self._set_status(str(exc))
+                return
+        elif not (in_kind == MediaKind.IMAGE and out_kind == MediaKind.IMAGE):
             try:
                 tools = find_tools()
             except FFmpegNotFound as exc:
@@ -364,7 +370,7 @@ class Backend(QObject):
         self._set_busy(True)
 
         self._thread = QThread()
-        self._worker = ConversionWorker(jobs, opt, tools)
+        self._worker = ConversionWorker(jobs, opt, tools, soffice)
         self._worker.moveToThread(self._thread)
         self._thread.started.connect(self._worker.run)
         self._worker.progress.connect(self._set_progress)

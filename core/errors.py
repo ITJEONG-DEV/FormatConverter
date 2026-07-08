@@ -25,6 +25,15 @@ def friendly_ffmpeg_error(stderr: str, name: str) -> str:
     return f"{name}: 변환에 실패했습니다."
 
 
+def friendly_document_error(stderr: str, name: str) -> str:
+    s = (stderr or "").lower()
+    if "no export filter" in s or "no filter" in s or "source file could not be loaded" in s:
+        return f"{name}: 이 형식으로 변환할 수 없습니다 (지원하지 않는 조합)."
+    if "permission denied" in s:
+        return f"{name}: 저장 위치에 쓸 수 없습니다 (권한을 확인하세요)."
+    return f"{name}: 문서 변환에 실패했습니다."
+
+
 def friendly_image_error(exc: Exception, name: str) -> str:
     msg = f"{exc.__class__.__name__}: {exc}".lower()
     if "cannot identify image" in msg or "unidentified" in msg:

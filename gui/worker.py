@@ -9,7 +9,12 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, Slot
 
-from core.errors import friendly_ffmpeg_error, friendly_image_error
+import os
+
+from core.document import build_convert_command, expected_output, find_soffice
+from core.errors import (
+    friendly_document_error, friendly_ffmpeg_error, friendly_image_error,
+)
 from core.ffmpeg_tools import Tools, probe_duration
 from core.image import convert_image
 from core.media import (
@@ -28,11 +33,12 @@ class ConversionWorker(QObject):
     status = Signal(str)              # 상태 텍스트
     finished = Signal(bool, str)      # (성공여부, 메시지)
 
-    def __init__(self, jobs, options, tools: Tools):
+    def __init__(self, jobs, options, tools: Tools, soffice: str | None = None):
         super().__init__()
         self._jobs = jobs
         self._opt = options
         self._tools = tools
+        self._soffice = soffice
         self._cancel = False
 
     @Slot()
@@ -65,9 +71,15 @@ class ConversionWorker(QObject):
             self._convert_sequence(index, total, list(inp), out, ext)
             return
 
+        in_ext = Path(inp).suffix.lstrip(".")
+
+        # 문서 → 문서(C7): LibreOffice
+        if kind_of(in_ext) == MediaKind.DOCUMENT:
+            self._convert_document(index, total, inp, out, ext)
+            return
+
         # 입력이 이미지면 Pillow로 인프로세스 변환(C4, ffmpeg 불필요).
         # 영상→이미지(C5)는 입력이 영상이므로 아래 ffmpeg 경로로 간다.
-        in_ext = Path(inp).suffix.lstrip(".")
         if kind_of(in_ext) == MediaKind.IMAGE:
             try:
                 convert_image(inp, out, ext, self._opt)
@@ -92,6 +104,27 @@ class ConversionWorker(QObject):
             self._run_proc(cmd, seg, index, total, Path(out).name)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+
+    def _convert_document(self, index, total, inp, out, ext):
+        soffice = self._soffice or find_soffice()  # 없으면 SofficeNotFound → run()에서 처리
+        name = Path(inp).name
+        profile = tempfile.mkdtemp(prefix="fc_lo_")
+        try:
+            outdir = str(Path(out).parent)
+            cmd = build_convert_command(soffice, inp, ext, outdir, profile)
+            proc = subprocess.run(
+                cmd, capture_output=True, text=True,
+                creationflags=_NO_WINDOW, timeout=180,
+            )
+            produced = expected_output(inp, ext, outdir)
+            if not Path(produced).exists():
+                raise RuntimeError(friendly_document_error(proc.stdout + proc.stderr, name))
+            if os.path.abspath(produced) != os.path.abspath(out):
+                os.replace(produced, out)  # _dest_for가 _converted 등으로 바꾼 경우 맞춤
+            self.fileProgress.emit(1.0)
+            self.progress.emit((index + 1) / total)
+        finally:
+            shutil.rmtree(profile, ignore_errors=True)
 
     def _run_proc(self, cmd, seg, index, total, name):
         proc = subprocess.Popen(

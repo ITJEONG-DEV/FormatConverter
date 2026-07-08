@@ -6,5 +6,6 @@ testpaths = ["tests"]
 addopts = "-ra --durations=10"
 markers = [
     "ffmpeg: ffmpeg/ffprobe 실행 파일이 필요한 통합 테스트 (없으면 자동 skip)",
+    "soffice: LibreOffice가 필요한 문서 변환 통합 테스트 (없으면 자동 skip)",
     "gui: PySide6 GUI(offscreen) 스모크 테스트 (PySide6 없으면 자동 skip)",
 ]

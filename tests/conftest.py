@@ -53,6 +53,16 @@ def sample_mp4(tmp_path_factory, tools):
 
 
 @pytest.fixture(scope="session")
+def soffice():
+    """LibreOffice 경로. 없으면 해당 테스트 skip."""
+    from core.document import SofficeNotFound, find_soffice
+    try:
+        return find_soffice()
+    except SofficeNotFound:
+        pytest.skip("LibreOffice 미설치 — 문서 변환 통합 테스트 skip")
+
+
+@pytest.fixture(scope="session")
 def qapp():
     """QML/워커 테스트용 QGuiApplication (세션당 하나). PySide6 없으면 skip."""
     pytest.importorskip("PySide6")

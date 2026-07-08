@@ -10,7 +10,8 @@ def test_output_categories():
     ]
     assert output_categories_for("wav") == [MediaKind.AUDIO]
     assert output_categories_for("png") == [MediaKind.IMAGE, MediaKind.VIDEO]
-    assert output_categories_for("txt") == []
+    assert output_categories_for("docx") == [MediaKind.DOCUMENT]
+    assert output_categories_for("zzz") == []
 
 
 def test_output_formats_by_category():
@@ -31,7 +32,8 @@ def test_is_supported_input():
     assert is_supported_input("mp4")              # 영상 → 영상/음원 (구현됨)
     assert is_supported_input("wav")              # 음원 → 음원 (구현됨)
     assert is_supported_input("png")              # 이미지 → 이미지 (C4 구현됨)
-    assert not is_supported_input("txt")          # 미지원 확장자
+    assert is_supported_input("docx")             # 문서 → 문서 (C7 구현됨)
+    assert not is_supported_input("zzz")          # 미지원 확장자
 
 
 def test_output_formats_for_image():
@@ -62,5 +64,5 @@ def test_output_formats_for_audio():
 
 
 def test_output_formats_for_unsupported():
-    assert output_formats_for("txt") == []
+    assert output_formats_for("zzz") == []
     assert output_formats_for("xyz") == []

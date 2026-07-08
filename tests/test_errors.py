@@ -1,5 +1,16 @@
 """① 단위 테스트 — 변환 실패 메시지 한글화 (core/errors.py)."""
-from core.errors import friendly_ffmpeg_error, friendly_image_error
+from core.errors import (
+    friendly_document_error, friendly_ffmpeg_error, friendly_image_error,
+)
+
+
+def test_document_no_filter():
+    assert "변환할 수 없" in friendly_document_error("Error: no export filter for", "a.docx")
+
+
+def test_document_generic():
+    msg = friendly_document_error("weird", "a.docx")
+    assert "a.docx" in msg and "문서" in msg
 
 
 def test_ffmpeg_no_stream():

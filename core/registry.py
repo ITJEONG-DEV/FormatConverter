@@ -14,6 +14,7 @@ class MediaKind(str, Enum):
     VIDEO = "video"
     AUDIO = "audio"
     IMAGE = "image"
+    DOCUMENT = "document"
 
 
 @dataclass(frozen=True)
@@ -28,6 +29,10 @@ class Format:
 _VIDEO = ["mp4", "avi", "mkv", "mov", "webm", "flv", "wmv", "m4v", "mpeg", "ts", "3gp"]
 _AUDIO = ["mp3", "wav", "aac", "flac", "ogg", "m4a", "wma", "opus", "aiff"]
 _IMAGE = ["png", "jpg", "jpeg", "webp", "bmp", "gif", "tiff", "ico", "heic"]
+_DOCUMENT = [
+    "pdf", "docx", "doc", "odt", "rtf", "txt", "html",
+    "xlsx", "xls", "csv", "ods", "pptx", "ppt", "odp",
+]
 
 FORMATS: dict[str, Format] = {}
 for _ext in _VIDEO:
@@ -37,6 +42,8 @@ for _ext in _AUDIO:
 for _ext in _IMAGE:
     # 컨테이너 특성상 ico/heic 등은 출력 지원이 제한적이지만 데이터로만 표시
     FORMATS[_ext] = Format(_ext, MediaKind.IMAGE)
+for _ext in _DOCUMENT:
+    FORMATS[_ext] = Format(_ext, MediaKind.DOCUMENT)
 
 
 # --- 변환 카테고리(입력 종류, 출력 종류) ---
@@ -56,6 +63,7 @@ IMPLEMENTED_ROUTES = {
     (MediaKind.IMAGE, MediaKind.IMAGE),   # C4 (이미지→이미지, Pillow)
     (MediaKind.VIDEO, MediaKind.IMAGE),   # C5 (영상→이미지: gif/프레임)
     (MediaKind.IMAGE, MediaKind.VIDEO),   # C6 (이미지 시퀀스→영상)
+    (MediaKind.DOCUMENT, MediaKind.DOCUMENT),  # C7 (문서→문서, LibreOffice)
 }
 
 
@@ -83,6 +91,9 @@ _PRIORITY = {
     # image
     "png": 0, "jpg": 1, "jpeg": 2, "webp": 3, "bmp": 4,
     "tiff": 5, "gif": 6, "ico": 7, "heic": 8,
+    # document
+    "pdf": 0, "docx": 1, "xlsx": 2, "pptx": 3, "odt": 4, "txt": 5, "html": 6,
+    "rtf": 7, "doc": 8, "xls": 9, "csv": 10, "ods": 11, "ppt": 12, "odp": 13,
 }
 
 
@@ -91,8 +102,9 @@ KIND_LABEL = {
     MediaKind.VIDEO: "영상",
     MediaKind.AUDIO: "음원",
     MediaKind.IMAGE: "이미지",
+    MediaKind.DOCUMENT: "문서",
 }
-_KIND_ORDER = [MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.IMAGE]
+_KIND_ORDER = [MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.IMAGE, MediaKind.DOCUMENT]
 
 
 def output_categories_for(input_ext: str) -> list[MediaKind]:

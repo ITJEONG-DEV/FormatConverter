@@ -66,7 +66,7 @@ def test_backend_filters_unsupported(qapp):
     from gui.backend import Backend
 
     b = Backend()
-    b.addUrls(["file:///C:/a/movie.mp4", "file:///C:/a/note.txt"])
+    b.addUrls(["file:///C:/a/movie.mp4", "file:///C:/a/note.zzz"])
     assert b.files == ["movie.mp4"]                       # 지원 확장자만 남음
 
 
@@ -112,6 +112,19 @@ def test_audio_input_single_category(qapp):
     b.addUrls(["file:///C:/a/song.wav"])
     # 음원 입력은 음원 출력 한 종류뿐 → 종류 선택 UI 숨김 대상
     assert [c["value"] for c in b.outputCategories] == ["audio"]
+
+
+@pytest.mark.gui
+def test_backend_document_input(qapp):
+    from gui.backend import Backend
+
+    b = Backend()
+    b.addUrls(["file:///C:/d/report.docx"])
+    assert b.inputKind == "document"
+    assert [c["value"] for c in b.outputCategories] == ["document"]
+    assert "pdf" in b.outputFormats
+    b.setOutputFormat("pdf")
+    assert b.outputKind == "document"
 
 
 @pytest.mark.gui

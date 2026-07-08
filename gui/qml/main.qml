@@ -74,7 +74,7 @@ ApplicationWindow {
                 }
                 Label {
                     Layout.alignment: Qt.AlignHCenter
-                    text: "영상 → 영상/음원 · 음원 → 음원 · 이미지 → 이미지"
+                    text: "영상·음원·이미지·문서 변환 (문서는 LibreOffice 필요)"
                     font.pixelSize: 12
                     color: "#999"
                 }
@@ -208,12 +208,14 @@ ApplicationWindow {
 
                 Label {
                     text: "비트레이트"
-                    visible: backend.outputKind !== "image" && backend.inputKind !== "image"
+                    visible: backend.outputKind === "audio"
+                             || (backend.outputKind === "video" && backend.inputKind === "video")
                 }
                 ComboBox {
                     id: bitrateBox
                     Layout.fillWidth: true
-                    visible: backend.outputKind !== "image" && backend.inputKind !== "image"
+                    visible: backend.outputKind === "audio"
+                             || (backend.outputKind === "video" && backend.inputKind === "video")
                     textRole: "text"
                     valueRole: "value"
                     currentIndex: 1
