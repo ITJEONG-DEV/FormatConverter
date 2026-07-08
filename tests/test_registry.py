@@ -13,7 +13,7 @@ def test_output_categories():
         MediaKind.IMAGE, MediaKind.VIDEO, MediaKind.DOCUMENT,
     ]
     assert output_categories_for("docx") == [MediaKind.DOCUMENT]   # docx→이미지 불가(pdf만)
-    assert output_categories_for("pdf") == [MediaKind.DOCUMENT, MediaKind.IMAGE]
+    assert output_categories_for("pdf") == [MediaKind.IMAGE]        # pdf→문서 미제공, 이미지만
     assert output_categories_for("zzz") == []
 
 

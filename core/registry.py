@@ -89,6 +89,26 @@ def _route_allows_input(route, input_ext: str) -> bool:
     return allowed is None or input_ext in allowed
 
 
+# 문서→문서는 계열이 맞아야 실제 변환된다(워드→스프레드시트 등은 무의미).
+# 입력 확장자의 계열 + 공통(pdf)만 출력으로 노출한다.
+_DOC_FAMILY = {
+    "docx": "word", "doc": "word", "odt": "word", "rtf": "word", "txt": "word", "html": "word",
+    "xlsx": "sheet", "xls": "sheet", "ods": "sheet", "csv": "sheet",
+    "pptx": "pres", "ppt": "pres", "odp": "pres",
+    "pdf": "pdf",
+}
+_FAMILY_OUTPUTS = {
+    "word":  ["pdf", "docx", "odt", "rtf", "txt", "html", "doc"],
+    "sheet": ["pdf", "xlsx", "ods", "csv", "html", "xls"],
+    "pres":  ["pdf", "pptx", "odp", "ppt"],
+    "pdf":   [],   # pdf→문서 변환은 신뢰도 낮아 제공 안 함(pdf→이미지만 지원)
+}
+
+
+def _document_targets(input_ext: str) -> list[str]:
+    return list(_FAMILY_OUTPUTS.get(_DOC_FAMILY.get(input_ext, ""), []))
+
+
 def kind_of(ext: str) -> MediaKind | None:
     fmt = FORMATS.get(ext.lower().lstrip("."))
     return fmt.kind if fmt else None
@@ -130,7 +150,10 @@ _KIND_ORDER = [MediaKind.VIDEO, MediaKind.AUDIO, MediaKind.IMAGE, MediaKind.DOCU
 
 
 def output_categories_for(input_ext: str) -> list[MediaKind]:
-    """입력에 대해 가능한 출력 종류(카테고리) 목록. 같은 종류를 먼저."""
+    """입력에 대해 가능한 출력 종류(카테고리) 목록. 같은 종류를 먼저.
+
+    실제 출력 포맷이 하나도 없는 종류는 제외한다(예: pdf→문서).
+    """
     input_ext = input_ext.lower().lstrip(".")
     kind = kind_of(input_ext)
     if kind is None:
@@ -139,7 +162,8 @@ def output_categories_for(input_ext: str) -> list[MediaKind]:
         dst for src, dst in IMPLEMENTED_ROUTES
         if src == kind and _route_allows_input((src, dst), input_ext)
     }
-    return sorted(dsts, key=lambda k: (0 if k == kind else 1, _KIND_ORDER.index(k)))
+    ordered = sorted(dsts, key=lambda k: (0 if k == kind else 1, _KIND_ORDER.index(k)))
+    return [k for k in ordered if output_formats_for(input_ext, k)]
 
 
 def output_formats_for(input_ext: str, category: MediaKind | None = None) -> list[str]:
@@ -160,22 +184,24 @@ def output_formats_for(input_ext: str, category: MediaKind | None = None) -> lis
     ]
     dsts = sorted(set(dsts), key=lambda d: (0 if d == kind else 1, _KIND_ORDER.index(d)))
 
+    def _sort_key(ext: str):
+        return (ext == input_ext, _PRIORITY.get(ext, 99), ext)
+
     result: list[str] = []
     seen: set[str] = set()
     for dst in dsts:
         if category is not None and dst != category:
             continue
         route = (kind, dst)
-        if route in ROUTE_OUTPUTS:
+        if route == (MediaKind.DOCUMENT, MediaKind.DOCUMENT):
+            exts = sorted(_document_targets(input_ext), key=_sort_key)  # 계열 제한
+        elif route in ROUTE_OUTPUTS:
             exts = list(ROUTE_OUTPUTS[route])           # 명시된 순서 유지
         else:
-            fmts = [f for f in FORMATS.values() if f.kind == dst and f.can_output]
-            fmts.sort(key=lambda f: (
-                f.ext == input_ext,                     # 동일 확장자는 뒤로
-                _PRIORITY.get(f.ext, 99),               # 흔한 포맷 우선
-                f.ext,
-            ))
-            exts = [f.ext for f in fmts]
+            exts = sorted(
+                (f.ext for f in FORMATS.values() if f.kind == dst and f.can_output),
+                key=_sort_key,
+            )
         for e in exts:
             if e in FORMATS and e not in seen:
                 seen.add(e)

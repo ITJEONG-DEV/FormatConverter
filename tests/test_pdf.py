@@ -15,12 +15,22 @@ def test_image_to_pdf_route():
 
 
 def test_pdf_to_image_route():
-    cats = output_categories_for("pdf")
-    assert cats[0] == MediaKind.DOCUMENT               # 같은 종류 먼저
-    assert MediaKind.IMAGE in cats                     # pdf→이미지
+    # pdf→문서는 신뢰도 낮아 미제공 → 이미지 종류만
+    assert output_categories_for("pdf") == [MediaKind.IMAGE]
     outs = output_formats_for("pdf", MediaKind.IMAGE)
     assert "png" in outs and "jpg" in outs
     assert "gif" not in outs and "ico" not in outs     # 제한된 목록
+
+
+def test_document_family_filter():
+    # docx(워드)는 스프레드시트/프레젠테이션 포맷을 제공하지 않음
+    outs = output_formats_for("docx", MediaKind.DOCUMENT)
+    assert "pdf" in outs and "odt" in outs and "txt" in outs
+    assert "xlsx" not in outs and "pptx" not in outs
+    # xlsx(시트)는 워드 포맷을 제공하지 않음
+    sheet = output_formats_for("xlsx", MediaKind.DOCUMENT)
+    assert "csv" in sheet and "pdf" in sheet
+    assert "docx" not in sheet and "pptx" not in sheet
 
 
 def test_video_to_image_gif_first():

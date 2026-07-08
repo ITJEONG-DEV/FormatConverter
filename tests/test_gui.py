@@ -147,10 +147,9 @@ def test_backend_pdf_to_image(qapp):
     b = Backend()
     b.addUrls(["file:///C:/d/doc.pdf"])
     assert b.inputKind == "document"
-    assert [c["value"] for c in b.outputCategories] == ["document", "image"]
-    b.setOutputCategory("image")
+    # pdf→문서 미제공 → 이미지 종류만(종류 선택 UI 없이 바로 이미지 출력)
+    assert [c["value"] for c in b.outputCategories] == ["image"]
     assert "png" in b.outputFormats and "jpg" in b.outputFormats
-    b.setOutputFormat("png")
     assert b.outputKind == "image"
 
 
