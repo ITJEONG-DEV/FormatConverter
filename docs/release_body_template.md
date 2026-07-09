@@ -25,5 +25,6 @@
 
 > ffmpeg는 **영상·음원 변환**에 필요합니다. lite 사용 시 동봉된 `lite-ffmpeg-안내.md`를 참고하세요.
 
-> 🍎 **macOS 사용자**: Apple Silicon은 `...-macos-arm64-{{VERSION}}.zip`, Intel은 `...-macos-x86_64-{{VERSION}}.zip`.
+> 🍎 **macOS 사용자**: Apple Silicon은 `...-macos-arm64-{{VERSION}}.zip`.
+> (Intel용 `...-macos-x86_64-...zip` 은 요청 시 추가 제공됩니다.)
 > ffmpeg는 `brew install ffmpeg`로 설치하고, 최초 실행 시 우클릭→열기 하세요(동봉된 `macos-안내.md` 참고).

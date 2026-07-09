@@ -131,21 +131,15 @@ jobs:
           generate_release_notes: true   # body 뒤에 커밋 기반 변경내역 자동 추가
           body_path: release_body.md
 
-  # macOS 앱(.app) 빌드 → 같은 릴리스에 자산 추가.
+  # macOS 앱(.app) 빌드 → 같은 릴리스에 자산 추가 (Apple Silicon/arm64).
   # Windows 릴리스가 먼저 생성된 뒤(needs) zip 만 덧붙인다.
-  # macos-14 = Apple Silicon(arm64), macos-13 = Intel(x86_64). 각 아키텍처별 전용 산출물.
-  # ffmpeg 는 번들하지 않으며, 사용자는 brew install ffmpeg 로 연동한다(docs/macos-안내.md).
+  # Intel(x86_64)은 러너 대기가 길어 릴리스를 막지 않도록 별도 수동 워크플로로 분리한다
+  #   → .github/workflows/macos-intel.yml (workflow_dispatch). ffmpeg 는 brew 연동.
   build-macos:
     needs: build-and-release
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14
-            arch: arm64
-          - runner: macos-13
-            arch: x86_64
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-14
+    env:
+      ARCH: arm64
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -166,7 +160,7 @@ jobs:
           VER="${GITHUB_REF_NAME#v}"
           echo "__version__ = \"$VER\"" > version.py
           echo "VERSION=$VER" >> "$GITHUB_ENV"
-          echo "Building macOS ${{ matrix.arch }} version $VER"
+          echo "Building macOS $ARCH version $VER"
 
       - name: Build (.app)
         run: python build.py
@@ -179,7 +173,7 @@ jobs:
           cp -R "dist/FormatConverter.app" "$STAGE/"
           cp "docs/macos-안내.md" "$STAGE/"
           # ditto 는 .app 의 심볼릭링크·권한·리소스포크를 보존한다(zip 보다 안전).
-          ditto -c -k --keepParent "$STAGE" "release/FormatConverter-macos-${{ matrix.arch }}-$VERSION.zip"
+          ditto -c -k --keepParent "$STAGE" "release/FormatConverter-macos-$ARCH-$VERSION.zip"
           ls -la release
 
       - name: Upload macOS asset to release

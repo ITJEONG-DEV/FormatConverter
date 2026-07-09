@@ -1,0 +1,61 @@
+name: macOS Intel build (manual)
+
+# Intel(x86_64) macOS 러너는 대기가 길어 릴리스를 막을 수 있어 별도 수동 실행으로 분리한다.
+# 필요할 때 Actions 탭에서 Run workflow → 대상 태그(vX.Y.Z)를 입력해 실행하면
+# 해당 릴리스에 x86_64 zip 자산을 추가한다.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "대상 릴리스 태그 (예: v0.0.8)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos-intel:
+    runs-on: macos-13   # Intel(x86_64)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Stamp version from tag
+        run: |
+          VER="${GITHUB_EVENT_INPUTS_TAG#v}"
+          echo "__version__ = \"$VER\"" > version.py
+          echo "VERSION=$VER" >> "$GITHUB_ENV"
+        env:
+          GITHUB_EVENT_INPUTS_TAG: ${{ github.event.inputs.tag }}
+
+      - name: Build (.app)
+        run: python build.py
+
+      - name: Package .app (ditto)
+        run: |
+          mkdir -p release
+          STAGE="FormatConverter-macos-$VERSION"
+          mkdir -p "$STAGE"
+          cp -R "dist/FormatConverter.app" "$STAGE/"
+          cp "docs/macos-안내.md" "$STAGE/"
+          ditto -c -k --keepParent "$STAGE" "release/FormatConverter-macos-x86_64-$VERSION.zip"
+          ls -la release
+
+      - name: Upload x86_64 asset to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: release/*.zip
